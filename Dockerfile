@@ -25,8 +25,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app/
 
 # Run the migration commands
-RUN python manage.py makemigrations 
-RUN python manage.py migrate
+#
 
 
 # Expose the port the app runs on
@@ -34,3 +33,4 @@ EXPOSE 8000
 
 # Run Django development server
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
