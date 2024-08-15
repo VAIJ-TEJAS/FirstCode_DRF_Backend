@@ -1,3 +1,11 @@
-from django.shortcuts import render
+from rest_framework import viewsets
+from .models import Pattern, UserProfile
+from .serializers import PatternSerializer, UserProfileSerializer
 
-# Create your views here.
+class PatternViewSet(viewsets.ModelViewSet):
+    queryset = Pattern.objects.all()
+    serializer_class = PatternSerializer
+
+class UserProfileViewSet(viewsets.ModelViewSet):
+    queryset = UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
