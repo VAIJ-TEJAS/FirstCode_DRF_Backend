@@ -4,25 +4,31 @@ services:
   db:
     image: postgres:15
     environment:
-      POSTGRES_DB: firstcode
-      POSTGRES_USER: myuser
+      POSTGRES_DB: firstcode-db
+      POSTGRES_USER: firstcode-user
       POSTGRES_PASSWORD: mypassword
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - django_network
+    
 
   web:
-    image: django-server
-    command: python manage.py runserver 0.0.0.0:8000
+    build: .
+    command: ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
     volumes:
       - .:/code
     ports:
       - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=FirstCode_DRF_Backend.settings
+
+
     depends_on:
       - db
     networks:
       - django_network
+    restart: on-failure
 
 networks:
   django_network:
