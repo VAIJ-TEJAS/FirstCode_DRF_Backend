@@ -17,13 +17,13 @@ RUN apt-get update && \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements.txt
-COPY requirements.txt /
+COPY requirements.txt /app/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the Django project files to the container
-COPY . /
+COPY . /app/
 
 # Expose the port the app runs on
 EXPOSE 8000
