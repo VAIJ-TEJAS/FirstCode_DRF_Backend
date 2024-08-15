@@ -5,7 +5,7 @@ class Subscription(models.Model):
     description = models.TextField()
     validity = models.IntegerField(help_text="Validity in days")
     price = models.IntegerField()
-    start_limit = models.DateTimeField()
+    start_limit = models.IntegerField()
     enroll_limit = models.IntegerField()
 
     def __str__(self):
@@ -25,3 +25,5 @@ class UserSubscription(models.Model):
 
     def __str__(self):
         return f"{self.subscription.name} - {self.payment_id}"
+    
+    # Needs to have nullable quantity
