@@ -42,5 +42,5 @@ router.register(r'user-profiles', user_views.UserProfileViewSet)
 # URL patterns
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include(router.urls)),
+    path('', include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
