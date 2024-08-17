@@ -9,15 +9,15 @@ services:
       POSTGRES_PASSWORD: mypassword
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     networks:
       - django_network
     
 
   web:
     build: .
-    command: ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
-    volumes:
-      - .:/code
+    command: ["sh", "-c", "python manage.py makemigrations && python manage.py migrate && python manage.py migrate --run-syncdb && python manage.py runserver 0.0.0.0:8000"]
     ports:
       - "8000:8000"
     environment:

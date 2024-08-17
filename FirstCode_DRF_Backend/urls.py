@@ -36,11 +36,15 @@ router.register(r'subscriptions', subscription_views.SubscriptionViewSet)
 router.register(r'user-subscriptions', subscription_views.UserSubscriptionViewSet)
 
 # Registering viewsets from the user app
+router.register(r'signup', user_views.Signup)
 router.register(r'patterns', user_views.PatternViewSet)
 router.register(r'user-profiles', user_views.UserProfileViewSet)
+router.register(r'update-name', user_views.UserNameUpdateViewSet, basename='update-name')
+router.register(r'delete-account', user_views.UserDeleteViewSet, basename='delete-account')
 
 # URL patterns
 urlpatterns = [
+    path("auth/", user_views.Signin.as_view()),
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
