@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Pattern, UserProfile
+from django.contrib.auth.models import User
 
 class PatternSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,3 +11,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = '__all__'
+
+
+class UserSerializer(serializers.ModelSerializer):
+    userprofile = UserProfileSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = "__all__"
+        extra_kwargs = {"password": {"write_only": True, "required": True}}

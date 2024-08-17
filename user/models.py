@@ -15,6 +15,7 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     user_subscription = models.ForeignKey(UserSubscription, on_delete=models.SET_NULL, null=True, blank=True)
     pattern = models.ForeignKey(Pattern, on_delete=models.SET_NULL, null=True, blank=True)
+    last_name_change = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.user.username
