@@ -4,22 +4,12 @@ from .models import Pattern, UserProfile
 from django.contrib.auth.models import User
 from rest_framework import viewsets, status
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.views import ObtainAuthToken
-from .serializers import PatternSerializer, UserProfileSerializer, UserSerializer
-
-
-class PatternViewSet(viewsets.ModelViewSet):
-    queryset = Pattern.objects.all()
-    serializer_class = PatternSerializer
-
-
-class UserProfileViewSet(viewsets.ModelViewSet):
-    queryset = UserProfile.objects.all()
-    serializer_class = UserProfileSerializer
-
+from .serializers import UserProfileSerializer, UserSerializer
 
 class Signup(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -58,20 +48,19 @@ class Signin(ObtainAuthToken):
         user.save()
 
         # Delete the old token and create a new one
-        old_token.delete()
-        new_token = Token.objects.create(user=user)
+        # old_token.delete()
+        # new_token = Token.objects.create(user=user)
 
         # Serialize the user object
         user_serializer = UserSerializer(user)
         serialized_user = user_serializer.data
 
-        return Response({"token": new_token.key, "user": serialized_user})
+        return Response({"token": old_token.key, "user": serialized_user})
 
 
 class UserNameUpdateViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
     http_method_names = ["post"]
 
     def create(self, request, *args, **kwargs):
@@ -101,7 +90,6 @@ class UserNameUpdateViewSet(viewsets.ModelViewSet):
 
 class UserDeleteViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    permission_classes = [IsAuthenticated]
     http_method_names = ["post"]
 
     def create(self, request, *args, **kwargs):
@@ -120,3 +108,28 @@ class UserDeleteViewSet(viewsets.ModelViewSet):
         Token.objects.filter(user_id=user.id).delete()
         
         return Response({"detail": "Account successfully deleted."}, status=status.HTTP_204_NO_CONTENT)
+
+
+class PatternAssignmentViewSet(viewsets.GenericViewSet, viewsets.mixins.CreateModelMixin):
+    queryset = UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
+    http_method_names = ['post']
+
+    def create(self, request, *args, **kwargs):
+        user = self.request.user
+        pattern_name = request.data.get('pattern_name')
+
+        if not pattern_name:
+            return Response({"detail": "Pattern name is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Look up the pattern by name
+        pattern = get_object_or_404(Pattern, name=pattern_name)
+
+        # Get or create the user profile
+        profile, created = UserProfile.objects.get_or_create(user=user)
+        
+        # Assign the pattern to the user profile
+        profile.pattern = pattern
+        profile.save()
+
+        return Response({"detail": "Pattern assigned successfully."}, status=status.HTTP_200_OK)
