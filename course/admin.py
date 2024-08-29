@@ -83,4 +83,4 @@ class UserLessonAdmin(admin.ModelAdmin):
 
 @admin.register(UserTask)
 class UserTaskAdmin(admin.ModelAdmin):
-    list_display = ['user', 'task', 'status', 'created_at']
+    list_display = ['user', 'task', 'created_at']

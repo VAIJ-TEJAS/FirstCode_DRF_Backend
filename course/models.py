@@ -40,7 +40,7 @@ class Course(models.Model):
 
 
 class Track(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='tracks')
     pattern = models.ForeignKey(Pattern, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     description = models.TextField()
@@ -50,7 +50,7 @@ class Track(models.Model):
 
 
 class Chapter(models.Model):
-    track = models.ForeignKey(Track, on_delete=models.CASCADE)
+    track = models.ForeignKey(Track, on_delete=models.CASCADE, related_name='chapters')
     name = models.CharField(max_length=255)
     description = models.TextField()
 
@@ -64,7 +64,7 @@ class Lesson(models.Model):
         ("Jupyter", "Jupyter"),
     ]
 
-    chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE)
+    chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name='lessons')
     name = models.CharField(max_length=255)
     short_description = models.CharField(max_length=500)
     long_description = models.TextField()
@@ -79,7 +79,7 @@ class Lesson(models.Model):
 
 
 class File(models.Model):
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='files')
     file = models.FileField(upload_to="lesson_files/")
 
     def __str__(self):
@@ -87,7 +87,7 @@ class File(models.Model):
 
 
 class Task(models.Model):
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='tasks')
     name = models.CharField(max_length=255)
     description = models.TextField()
 
@@ -96,11 +96,19 @@ class Task(models.Model):
 
 
 class UserCourse(models.Model):
+    STATUS_CHOICES = [
+        ('Enrolled', 'Enrolled'),
+        ('Started', 'Started'),
+        ('In Progress', 'In Progress'),
+        ('Completed', 'Completed'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     certificate_id = models.CharField(max_length=255, blank=True, null=True)
     completed_chapters = models.IntegerField(default=0)
-    status = models.CharField(max_length=50)
+    progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES) 
     last_modified = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -109,10 +117,16 @@ class UserCourse(models.Model):
 
 
 class UserChapter(models.Model):
+    STATUS_CHOICES = [
+        ('In Progress', 'In Progress'),
+        ('Completed', 'Completed'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE)
     completed_lessons = models.IntegerField(default=0)
-    status = models.CharField(max_length=50)
+    progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='In Progress')
     last_modified = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -121,10 +135,16 @@ class UserChapter(models.Model):
 
 
 class UserLesson(models.Model):
+    STATUS_CHOICES = [
+        ('In Progress', 'In Progress'),
+        ('Completed', 'Completed'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
     completed_tasks = models.IntegerField(default=0)
-    status = models.CharField(max_length=50)
+    progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='In Progress')
     last_modified = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -135,7 +155,6 @@ class UserLesson(models.Model):
 class UserTask(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
-    status = models.CharField(max_length=50)
     last_modified = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
