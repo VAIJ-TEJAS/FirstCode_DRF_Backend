@@ -21,10 +21,18 @@ class LiveClass(models.Model):
 
 
 class UserLiveClass(models.Model):
+    STATUS_CHOICES = [
+        ('Enrolled', 'Enrolled'),
+        ('Approved', 'Approved'),
+        ('Attended', 'Attended'),
+        ('Completed', 'Completed')
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     live_class = models.ForeignKey(LiveClass, on_delete=models.CASCADE)
-    status = models.CharField(max_length=50)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Enrolled')
     created_at = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.live_class.name}"

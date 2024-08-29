@@ -34,6 +34,9 @@ class UserSubscription(models.Model):
     subscription_end_date = models.DateTimeField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Upcoming')
     renewed = models.BooleanField(default=False)
+    enrolled_courses = models.IntegerField(default=0)
+    started_courses = models.IntegerField(default=0)
+    enrolled_classes = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

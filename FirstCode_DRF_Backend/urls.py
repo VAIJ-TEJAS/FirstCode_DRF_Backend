@@ -14,22 +14,17 @@ from user import views as user_views
 router = DefaultRouter()
 
 # Registering viewsets from the course app
-router.register(r'categories', course_views.CategoryViewSet)
-router.register(r'tags', course_views.TagViewSet)
-router.register(r'courses', course_views.CourseViewSet)
-router.register(r'tracks', course_views.TrackViewSet)
-router.register(r'chapters', course_views.ChapterViewSet)
-router.register(r'lessons', course_views.LessonViewSet)
-router.register(r'files', course_views.FileViewSet)
-router.register(r'tasks', course_views.TaskViewSet)
-router.register(r'user-courses', course_views.UserCourseViewSet)
-router.register(r'user-chapters', course_views.UserChapterViewSet)
-router.register(r'user-lessons', course_views.UserLessonViewSet)
-router.register(r'user-tasks', course_views.UserTaskViewSet)
+router.register(r'categories', course_views.CategoryViewSet, basename='categories')
+router.register(r'courses', course_views.CourseViewSet, basename='courses')
+router.register(r'my-courses', course_views.MyCourseViewSet, basename='my-courses')
+router.register(r'my-lessons', course_views.MyLessonViewSet, basename='lessons')
+router.register(r'user-courses', course_views.UserCourseViewSet, basename='user-courses')
+router.register(r'user-tasks', course_views.UserTaskViewSet, basename='user-tasks')
 
 # Registering viewsets from the liveclass app
-router.register(r'live-classes', liveclass_views.LiveClassViewSet)
-router.register(r'user-live-classes', liveclass_views.UserLiveClassViewSet)
+router.register(r'liveclasses', liveclass_views.LiveClassViewSet, basename='liveclasses')
+router.register(r'my-liveclasses', liveclass_views.MyLiveClassViewSet, basename='my-liveclasses')
+router.register(r'user-liveclasses', liveclass_views.UserLiveClassViewSet, basename='user-liveclasses')
 
 # Registering viewsets from the subscription app
 router.register(r'list-subscriptions', subscription_views.ListSubscriptionViewSet, basename='list-subscriptions')
