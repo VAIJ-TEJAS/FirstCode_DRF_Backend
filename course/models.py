@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth.models import User
 from user.models import Pattern
 
@@ -34,6 +35,7 @@ class Course(models.Model):
     requirements = models.TextField()
     cover_image = models.ImageField(upload_to="courses/", blank=True, null=True)
     is_paid = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True) 
 
     def __str__(self):
         return self.name
