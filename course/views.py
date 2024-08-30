@@ -1,3 +1,4 @@
+import uuid
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from rest_framework import viewsets, status
@@ -204,8 +205,8 @@ class UserTaskViewSet(viewsets.ModelViewSet):
         # Determine the status based on progress
         course_status = 'Completed' if course_progress == 1 else 'In Progress'
 
-        # Retrieve or create the UserCourse instance
-        UserCourse.objects.update_or_create(
+        # Retrieve or create the UserCourse instance and generate certificate if completed
+        user_course, created = UserCourse.objects.update_or_create(
             user=request.user,
             course=course,
             defaults={
@@ -214,6 +215,11 @@ class UserTaskViewSet(viewsets.ModelViewSet):
                 'status': course_status
             }
         )
+
+        # Generate a unique certificate ID if the course is completed
+        if course_status == 'Completed' and not user_course.certificate_id:
+            user_course.certificate_id = str(uuid.uuid4())
+            user_course.save()
 
         # Serialize and return the created or updated UserTask instance
         serializer = self.get_serializer(user_task)

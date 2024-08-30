@@ -35,6 +35,12 @@ router.register(r'signup', user_views.Signup, basename='signup')
 router.register(r'assign-pattern', user_views.PatternAssignmentViewSet, basename='assign-pattern')
 router.register(r'update-name', user_views.UserNameUpdateViewSet, basename='update-name')
 router.register(r'delete-account', user_views.UserDeleteViewSet, basename='delete-account')
+router.register(r'learning-progress', user_views.LearningProgressGraphViewSet, basename='learning-progress')
+router.register(r'monthly-progress', user_views.MonthlyProgressViewSet, basename='monthly-progress')
+router.register(r'piechart-stats', user_views.PieChartViewSet, basename='piechart-stats')
+router.register(r'events-stats', user_views.EventViewSet, basename='events-stats')
+router.register(r'leftcourses-stats', user_views.LeftCoursesViewSet, basename='leftcourses-stats')
+router.register(r'latest-courses-classes', user_views.LatestCoursesAndClassesViewSet, basename='latest-courses-classes')
 
 # URL patterns
 urlpatterns = [
