@@ -26,6 +26,9 @@ COPY . /app/
 
 # Run the migration commands
 #
+RUN python manage.py makemigrations
+RUN python manage.py migrate
+
 
 
 # Expose the port the app runs on
