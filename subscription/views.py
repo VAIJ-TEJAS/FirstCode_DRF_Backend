@@ -180,7 +180,7 @@ class UserSubscriptionViewSet(viewsets.ModelViewSet):
         except Subscription.DoesNotExist:
             return None
 
-class PaymentWebhookViewSet(viewsets.ModelViewSet):
+class PaymentWebhookViewSet(viewsets.ViewSet):
 
     # Allow any request to this endpoint
     @permission_classes([AllowAny])
