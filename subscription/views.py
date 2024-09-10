@@ -181,16 +181,12 @@ class UserSubscriptionViewSet(viewsets.ModelViewSet):
             return None
 
 class PaymentWebhookViewSet(viewsets.ViewSet):
+    permission_classes = [AllowAny]
 
-    # Allow any request to this endpoint
-    @permission_classes([AllowAny])
     @action(detail=False, methods=["post"], url_path="payment-success")
     def payment_successful_webhook(self, request, *args, **kwargs):
         # Print the incoming payload for debugging (remove in production)
         print(request.data)
 
-        # Process the payment data here
-        # You can verify the signature from Razorpay and process accordingly
-        
         # Respond with a simple acknowledgment
         return Response({"status": "received"}, status=status.HTTP_200_OK)
