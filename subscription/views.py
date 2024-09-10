@@ -24,15 +24,6 @@ class UserSubscriptionViewSet(viewsets.ModelViewSet):
     queryset = UserSubscription.objects.all()
     serializer_class = UserSubscriptionSerializer
 
-    @action(detail=False, methods=["post"], url_path="payment-success")
-    @permission_classes([AllowAny])
-    def payment_successful_webhook(self, request, *args, **kwargs):
-        # Print the incoming payload
-        print(request.data)
-
-        # Respond with a simple acknowledgment
-        return Response({"status": "received"}, status=status.HTTP_200_OK)
-
     @action(detail=False, methods=["post"], url_path="calculate")
     def calc_payment_amount(self, request, *args, **kwargs):
         # Static amount of 1000 INR for all subscription payments
@@ -188,3 +179,18 @@ class UserSubscriptionViewSet(viewsets.ModelViewSet):
             return Subscription.objects.get(id=subscription_id)
         except Subscription.DoesNotExist:
             return None
+
+class PaymentWebhookViewSet(viewsets.ViewSet):
+
+    # Allow any request to this endpoint
+    @permission_classes([AllowAny])
+    @action(detail=False, methods=["post"], url_path="payment-success")
+    def payment_successful_webhook(self, request, *args, **kwargs):
+        # Print the incoming payload for debugging (remove in production)
+        print(request.data)
+
+        # Process the payment data here
+        # You can verify the signature from Razorpay and process accordingly
+        
+        # Respond with a simple acknowledgment
+        return Response({"status": "received"}, status=status.HTTP_200_OK)
