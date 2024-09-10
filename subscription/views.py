@@ -1,12 +1,18 @@
 from datetime import datetime
 from django.utils import timezone
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from user.models import UserProfile
 from .models import Subscription, UserSubscription
 from .serializers import ListSubscriptionSerializer, UserSubscriptionSerializer
 
+import razorpay
+import time
+import os
+
+client = razorpay.Client(auth=(os.getenv("KEY_ID"), os.getenv("KEY_SECRET")))
 
 class ListSubscriptionViewSet(viewsets.ModelViewSet):
     queryset = Subscription.objects.all()
@@ -17,6 +23,45 @@ class ListSubscriptionViewSet(viewsets.ModelViewSet):
 class UserSubscriptionViewSet(viewsets.ModelViewSet):
     queryset = UserSubscription.objects.all()
     serializer_class = UserSubscriptionSerializer
+
+    @action(detail=False, methods=["post"], url_path="payment-success")
+    @permission_classes([AllowAny])
+    def payment_successful_webhook(self, request, *args, **kwargs):
+        # Print the incoming payload
+        print(request.data)
+
+        # Respond with a simple acknowledgment
+        return Response({"status": "received"}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"], url_path="calculate")
+    def calc_payment_amount(self, request, *args, **kwargs):
+        # Static amount of 1000 INR for all subscription payments
+        subscription_amount = 1000 * 100  # Razorpay expects amount in paise
+
+        # Create an order with Razorpay
+        order_currency = "INR"
+        order_receipt = f"receipt_{int(time.time())}"
+        notes = {"user_id": request.user.id}  # Add any notes if needed
+
+        razorpay_order = client.order.create(
+            dict(
+                amount=subscription_amount,  # amount in paise
+                currency=order_currency,
+                receipt=order_receipt,
+                notes=notes,
+            )
+        )
+
+        # Return the Razorpay order ID and other details
+        return Response(
+            {
+                "order_id": razorpay_order["id"],
+                "razorpay_key_id": os.getenv("KEY_ID"),
+                "amount": subscription_amount,  # returning amount in paise
+                "currency": order_currency,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["post"], url_path="new")
     def create_new_subscription(self, request, *args, **kwargs):
