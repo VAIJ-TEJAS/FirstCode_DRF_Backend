@@ -1,4 +1,4 @@
-name: Deploy of Firstcode API Django Application 
+name: Deployment of Firstcode API Django Application 
 
 on:
   push:
