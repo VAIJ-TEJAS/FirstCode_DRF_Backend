@@ -42,6 +42,9 @@ router.register(r'events-stats', user_views.EventViewSet, basename='events-stats
 router.register(r'leftcourses-stats', user_views.LeftCoursesViewSet, basename='leftcourses-stats')
 router.register(r'latest-courses-classes', user_views.LatestCoursesAndClassesViewSet, basename='latest-courses-classes')
 
+# Register the PaymentWebhookViewSet
+router.register(r'webhook', subscription_views.PaymentWebhookViewSet, basename='payment-webhook')
+
 # URL patterns
 urlpatterns = [
     path("auth/", user_views.Signin.as_view()),
