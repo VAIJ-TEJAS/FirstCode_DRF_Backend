@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     
     'course',
     'liveclass',
+    'order',
     'subscription',
     'user'
 ]

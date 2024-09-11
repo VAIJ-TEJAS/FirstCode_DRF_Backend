@@ -127,22 +127,23 @@ class PatternAssignmentViewSet(viewsets.GenericViewSet, viewsets.mixins.CreateMo
 
     def create(self, request, *args, **kwargs):
         user = self.request.user
-        pattern_name = request.data.get('pattern_name')
+        pattern_code = request.data.get('pattern_code')  # Get the pattern_code from request
 
-        if not pattern_name:
-            return Response({"detail": "Pattern name is required."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Look up the pattern by name
-        pattern = get_object_or_404(Pattern, name=pattern_name)
+        if not pattern_code:
+            return Response({"detail": "Pattern code is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Look up the pattern by code
+        pattern = get_object_or_404(Pattern, code=pattern_code)
 
         # Get or create the user profile
         profile, created = UserProfile.objects.get_or_create(user=user)
-        
+
         # Assign the pattern to the user profile
         profile.pattern = pattern
         profile.save()
 
         return Response({"detail": "Pattern assigned successfully."}, status=status.HTTP_200_OK)
+
 
 class LearningProgressGraphViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
     http_method_names = ['get']
@@ -185,6 +186,7 @@ class LearningProgressGraphViewSet(viewsets.GenericViewSet, viewsets.mixins.List
 
         return Response(progress_list, status=status.HTTP_200_OK)
     
+
 class MonthlyProgressViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
     http_method_names = ['get']
 
@@ -224,6 +226,7 @@ class MonthlyProgressViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelM
 
         return Response(progress_list, status=status.HTTP_200_OK)
     
+
 class PieChartViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
     permission_classes = [IsAuthenticated]
     http_method_names = ['get']
@@ -263,7 +266,8 @@ class PieChartViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
         }
 
         return Response(overview_data, status=status.HTTP_200_OK)
-    
+
+
 class EventViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
     http_method_names = ['get']
 
@@ -312,6 +316,7 @@ class EventViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
 
         return Response(serialized_events, status=status.HTTP_200_OK)
     
+
 class LeftCoursesViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
     http_method_names = ['get']
 

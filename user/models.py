@@ -4,6 +4,7 @@ from subscription.models import UserSubscription
 
 class Pattern(models.Model):
     name = models.CharField(max_length=255)
+    code = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
 
     def __str__(self):
