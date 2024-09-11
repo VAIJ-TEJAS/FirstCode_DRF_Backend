@@ -12,6 +12,4 @@ class SubscriptionAdmin(admin.ModelAdmin):
 
 @admin.register(UserSubscription)
 class UserSubscriptionAdmin(admin.ModelAdmin):
-    list_display = ['subscription', 'payment_id', 'payment_status', 'subscription_start_date', 'subscription_end_date']
-    list_filter = ['payment_status', 'payment_method']
-    search_fields = ['payment_id', 'order_id']
+    list_display = ['subscription','subscription_start_date', 'subscription_end_date']
