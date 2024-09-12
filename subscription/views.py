@@ -20,9 +20,12 @@ client = razorpay.Client(auth=(os.getenv("KEY_ID"), os.getenv("KEY_SECRET")))
 
 
 class ListSubscriptionViewSet(viewsets.ModelViewSet):
-    queryset = Subscription.objects.all()
     serializer_class = ListSubscriptionSerializer
     http_method_names = ["get"]
+
+    def get_queryset(self):
+        # Exclude subscriptions with level 0
+        return Subscription.objects.filter(level__gt=0)
 
 
 class UserSubscriptionViewSet(viewsets.ModelViewSet):

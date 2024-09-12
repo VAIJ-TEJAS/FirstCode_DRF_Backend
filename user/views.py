@@ -37,6 +37,22 @@ class Signup(viewsets.ModelViewSet):
         # Create UserProfile for the user
         UserProfile.objects.create(user=user)
 
+        # Fetch the subscription with level 0
+        try:
+            default_subscription = UserSubscription.objects.get(level=0)
+        except UserSubscription.DoesNotExist:
+            return Response({"error": "Default subscription not found"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Assign the subscription to the user
+        UserSubscription.objects.create(
+            user=user,
+            subscription=default_subscription.subscription,
+            amount=default_subscription.subscription.price,
+            subscription_start_date=timezone.now(),
+            subscription_end_date=timezone.now() + timedelta(days=default_subscription.subscription.validity),
+            status="Current",
+        )
+
         # Serialize the user object
         user_serializer = UserSerializer(token.user)
         serialized_user = user_serializer.data
