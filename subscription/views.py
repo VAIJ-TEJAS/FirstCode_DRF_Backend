@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -72,6 +72,7 @@ class UserSubscriptionViewSet(viewsets.ModelViewSet):
         # Create the Order object
         Order.objects.create(
             order_id=razorpay_order["id"],
+            user=request.user,
             subscription=subscription,
             subscription_type=subscription_type,
             completed=False,  # Default value
@@ -94,12 +95,12 @@ class PaymentWebhookViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["post"], url_path="payment-success")
     def payment_successful_webhook(self, request, *args, **kwargs):
-        # Print Headers, Query Params, and Payload for Debugging
+        # Debugging headers, query params, and payload
         print("Headers:", request.headers)
         print("Query Params:", request.query_params)
         print("Payload:", request.data)
 
-        # Get the Signature from the Header
+        # Get Razorpay signature from the headers
         signature = request.headers.get("X-Razorpay-Signature")
         if not signature:
             return Response({"error": "Signature missing"}, status=status.HTTP_400_BAD_REQUEST)
@@ -111,11 +112,11 @@ class PaymentWebhookViewSet(viewsets.ViewSet):
             webhook_secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
-        # Compare the computed signature with the one from the header
+        # Compare computed signature with the one from the header
         if not hmac.compare_digest(expected_signature, signature):
             return Response({"error": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Extract order_id from the payload
+        # Extract the order_id from the payload
         payment_data = request.data.get("payload", {}).get("payment", {}).get("entity", {})
         order_id = payment_data.get("order_id")
 
@@ -132,29 +133,38 @@ class PaymentWebhookViewSet(viewsets.ViewSet):
         if payment_data.get("status") != "captured":
             return Response({"error": "Payment not captured"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Get the user from the order
+        user = order.user
+
         # Get subscription details from the order
         subscription_id = order.subscription.id
         subscription_type = order.subscription_type
 
+        # Perform actions based on the subscription type
         if subscription_type == "NEW":
-            # Perform the create_new_subscription operation
-            return self.create_new_subscription(request, subscription_id, payment_data)
+            response = self.create_new_subscription(user, subscription_id, payment_data)
         elif subscription_type == "RENEW":
-            # Perform the renew_subscription operation
-            return self.renew_subscription(request, subscription_id, payment_data)
+            response = self.renew_subscription(user, subscription_id, payment_data)
         else:
             return Response({"error": "Invalid subscription type"}, status=status.HTTP_400_BAD_REQUEST)
 
-    def create_new_subscription(self, request, subscription_id, payment_data):
+        # Mark the order as completed
+        order.completed = True
+        order.save()
+
+        return response
+
+    def create_new_subscription(self, user, subscription_id, payment_data):
         subscription = Subscription.objects.get(id=subscription_id)
         today = timezone.now().date()
-        user_profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        user_profile, _ = UserProfile.objects.get_or_create(user=user)
         current_subscription = user_profile.current_subscription
 
+        # Determine start date and handle existing subscription if necessary
         if current_subscription:
             start_date = timezone.make_aware(
                 datetime.combine(
-                    current_subscription.subscription_end_date + timezone.timedelta(days=1),
+                    current_subscription.subscription_end_date + timedelta(days=1),
                     datetime.min.time(),
                 )
             )
@@ -163,61 +173,64 @@ class PaymentWebhookViewSet(viewsets.ViewSet):
         else:
             start_date = timezone.make_aware(datetime.combine(today, datetime.min.time()))
 
-        end_date = start_date + timezone.timedelta(days=subscription.validity)
+        # Calculate end date based on the subscription validity
+        end_date = start_date + timedelta(days=subscription.validity)
 
+        # Create a new UserSubscription
         user_subscription = UserSubscription.objects.create(
-            user=request.user,
+            user=user,
             subscription=subscription,
             subscription_start_date=start_date,
             subscription_end_date=end_date,
             status="Current",
-            payment=payment_data  # Store the entire payment data in the payment JSON field
+            payment=payment_data  # Store the payment data in the subscription
         )
 
+        # Update the user's profile with the new subscription
         user_profile.current_subscription = user_subscription
         user_profile.save()
 
         serializer = UserSubscriptionSerializer(user_subscription)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def renew_subscription(self, request, subscription_id, payment_data):
+    def renew_subscription(self, user, subscription_id, payment_data):
         subscription = Subscription.objects.get(id=subscription_id)
-        user_profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        user_profile, _ = UserProfile.objects.get_or_create(user=user)
         current_subscription = user_profile.current_subscription
+        today = timezone.now().date()
 
-        today = timezone.now().date()  # Get current date only
-
+        # Calculate the start date based on the current subscription
         if current_subscription:
             current_end_date = current_subscription.subscription_end_date.date()
-            start_date = max(today, current_end_date + timezone.timedelta(days=1))
+            start_date = max(today, current_end_date + timedelta(days=1))
             start_datetime = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
         else:
             start_datetime = timezone.make_aware(datetime.combine(today, datetime.min.time()))
 
-        end_datetime = start_datetime + timezone.timedelta(days=subscription.validity)
+        # Calculate the end date based on subscription validity
+        end_datetime = start_datetime + timedelta(days=subscription.validity)
 
-        if current_subscription:
-            if current_subscription.subscription_end_date.date() >= today:
-                status_new_subscription = "Upcoming"
-                current_subscription.renewed = True
-                current_subscription.save()
-                assign_to_profile = False
-            else:
-                status_new_subscription = "Current"
-                assign_to_profile = True
+        # Determine the status and handle renewal of current subscription
+        if current_subscription and current_subscription.subscription_end_date.date() >= today:
+            status_new_subscription = "Upcoming"
+            current_subscription.renewed = True
+            current_subscription.save()
+            assign_to_profile = False
         else:
             status_new_subscription = "Current"
             assign_to_profile = True
 
+        # Create the renewed subscription
         user_subscription = UserSubscription.objects.create(
-            user=request.user,
+            user=user,
             subscription=subscription,
             subscription_start_date=start_datetime,
             subscription_end_date=end_datetime,
             status=status_new_subscription,
-            payment=payment_data  # Store the entire payment data in the payment JSON field
+            payment=payment_data  # Store payment data
         )
 
+        # Assign the renewed subscription to the user profile if needed
         if assign_to_profile:
             user_profile.current_subscription = user_subscription
             user_profile.save()
