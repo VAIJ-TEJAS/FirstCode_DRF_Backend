@@ -35,5 +35,5 @@ class UserSubscription(models.Model):
     payment = models.JSONField(default=dict)
 
     def __str__(self):
-        return f"{self.subscription.name} - {self.payment_id}"
+        return f"{self.subscription.name}"
         
