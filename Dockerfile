@@ -31,7 +31,7 @@ RUN python manage.py migrate
 RUN python manage.py migrate --run-syncdb
 
 # Create superuser using environment variables
-RUN python manage.py create_superuser
+RUN python manage.py createsuperuser
 
 # Expose the port the app runs on
 EXPOSE 8000
