@@ -1,4 +1,4 @@
-name: Deployment of Firstcode API Django Application 
+name: Deploy Django Application
 
 on:
   push:
@@ -16,15 +16,18 @@ jobs:
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.5.3
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
 
-      - name: Deploy to Contabo VPS
+      - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no deployer@194.163.178.118 << 'EOF'
-          cd /home/deployer/workspace/FC_DRF_BE/FirstCode_DRF_Backend
+          ssh -o StrictHostKeyChecking=no ec2-user@43.204.219.160 << 'EOF'
+          cd /home/ec2-user/workspace/FirstCode_DRF_Backend
           git pull origin main
-          docker build -t fc_api_prod .
-          docker stop fc_api_server || true          
-          docker rm fc_api_server || true             
-          docker run -d --name fc_api_server -p 8080:8000 fc_api_prod  
+          source /home/ec2-user/workspace/venv/bin/activate
+          pip install -r requirements.txt
+          python manage.py makemigrations
+          python manage.py migrate
+          python manage.py collectstatic --noinput
+          sudo systemctl restart gunicorn
+          sudo systemctl restart nginx
           EOF
