@@ -1,0 +1,37 @@
+from django.core.mail import send_mail
+from django.core.mail.backends.smtp import EmailBackend
+
+def send_email_with_dynamic_sender(subject, message, from_email, recipient_list, fail_silently=False):
+    # Define your email settings for each sender email
+    email_settings = {
+        "firstcode.in@tejasvaij.com": {
+            "EMAIL_HOST": 'smtp.hostinger.com',
+            "EMAIL_PORT": 465,
+            "EMAIL_HOST_USER": 'firstcode.in@tejasvaij.com',
+            "EMAIL_HOST_PASSWORD": 'First@123',
+            "EMAIL_USE_SSL": True,
+        },
+    }
+
+    # Select the email settings based on the `from_email` argument
+    selected_settings = email_settings.get(from_email)
+
+    # Create an email backend instance with the selected settings
+    email_backend = EmailBackend(
+        host=selected_settings["EMAIL_HOST"],
+        port=selected_settings["EMAIL_PORT"],
+        username=selected_settings["EMAIL_HOST_USER"],
+        password=selected_settings["EMAIL_HOST_PASSWORD"],
+        use_tls=selected_settings.get("EMAIL_USE_TLS", False),
+        use_ssl=selected_settings.get("EMAIL_USE_SSL", False)
+    )
+
+    # Send the email using the configured backend
+    send_mail(
+        subject=subject,
+        message=message,
+        from_email=from_email,
+        recipient_list=recipient_list,
+        fail_silently=fail_silently,
+        connection=email_backend
+    )
