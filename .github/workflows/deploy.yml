@@ -20,9 +20,11 @@ jobs:
 
       - name: Deploy to Contabo VPS
         run: |
-          ssh -o StrictHostKeyChecking=no deployer@194.163.178.118<< 'EOF'
-          cd /home/deployer/workspace/fc_prod/FirstCode_DRF_Backend
+          ssh -o StrictHostKeyChecking=no deployer@194.163.178.118 << 'EOF'
+          cd /home/deployer/workspace/FC_DRF_BE/FirstCode_DRF_Backend
           git pull origin main
           docker build -t fc_api_prod .
-          docker restart fc_api_server
+          docker stop fc_api_server || true          
+          docker rm fc_api_server || true             
+          docker run -d --name fc_api_server -p 8080:8000 fc_api_prod  
           EOF
