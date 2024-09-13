@@ -7,7 +7,7 @@ from rest_framework.routers import DefaultRouter
 # Importing views with aliases
 from course import views as course_views
 from liveclass import views as liveclass_views
-from otp.views import GenerateOTPLogin, GenerateOTPRegister, GenerateOTPResetPassword, VerifyOTPLogin, VertifyOTPResetPassword, VerifyOTPRegister
+from otp.views import GenerateOTPLogin, GenerateOTPRegister, PasswordResetConfirm, SendPasswordResetLink, VerifyOTPLogin, VerifyOTPRegister
 from subscription import views as subscription_views
 from user import views as user_views
 
@@ -50,9 +50,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
     path('generate-otp-register/', GenerateOTPRegister.as_view(), name='generate-otp-register'),
-    path('generate-otp-login/', GenerateOTPLogin.as_view(), name='generate-otp-login'),
-    path('generate-otp-reset-password/', GenerateOTPResetPassword.as_view(), name='generate-otp'),
     path('verify-otp/', VerifyOTPRegister.as_view(), name='verify-otp'),
+    path('generate-otp-login/', GenerateOTPLogin.as_view(), name='generate-otp-login'),
     path('verify-otp-login/', VerifyOTPLogin.as_view(), name='verify-otp-login'),
-    path('reset-password/', VertifyOTPResetPassword.as_view(), name='reset-password'),
+    path('reset_password_confirm/', SendPasswordResetLink.as_view(), name='reset_password_confirm'),
+    path('reset-password-confirmed/', PasswordResetConfirm.as_view(), name='reset-password-confirmed'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

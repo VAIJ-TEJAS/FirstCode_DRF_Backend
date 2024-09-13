@@ -1,4 +1,7 @@
 from django.utils import timezone
+from django.utils.crypto import get_random_string
+from django.urls import reverse
+from django.conf import settings
 from django.utils.timezone import now, timedelta
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
@@ -11,7 +14,7 @@ from subscription.models import UserSubscription
 from user.models import User, UserProfile
 from user.serializers import UserSerializer
 from utils.email_dynamic_sender import send_email_with_dynamic_sender
-from .models import OTP
+from .models import OTP, PasswordResetToken
 import random
 
 
@@ -105,7 +108,7 @@ class GenerateOTPLogin(APIView):
         return Response({"message": "OTP sent to email."}, status=status.HTTP_200_OK)
 
 
-class GenerateOTPResetPassword(APIView):
+class SendPasswordResetLink(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -117,32 +120,41 @@ class GenerateOTPResetPassword(APIView):
             )
 
         # Check if a user with the given email exists
-        if not User.objects.filter(email=email).exists():
-            # Return an error response if no user is found
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
             return Response(
                 {"error": "No user found with this email"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Generate a 6-digit OTP
-        otp_code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+        # Generate a token (can be anything unique)
+        token = get_random_string(30)
+        expires_at = now() + timedelta(hours=1)  # Link valid for 1 hour
 
-        # Set OTP expiration time (e.g., 10 minutes from now)
-        expires_at = now() + timedelta(minutes=10)
+        # Create a new password reset token
+        PasswordResetToken.objects.create(
+            email=email, token=token, expires_at=expires_at, is_used=False
+        )
 
-        # Create OTP object
-        OTP.objects.create(email=email, code=otp_code, expires_at=expires_at)
+        # Build the password reset link (frontend route can be defined in your app)
+        reset_url = request.build_absolute_uri(
+            reverse("reset_password_confirm")  # Define this URL in your app
+        )
+        reset_url = f"{reset_url}?email={email}&token={token}"
 
-        # Send OTP via email
+        # Send the reset password email
         send_email_with_dynamic_sender(
-            subject="Your OTP",
-            message=f"Your OTP is {otp_code}. It will expire in 10 minutes.",
+            subject="Password Reset Link",
+            message=f"Click on the link to reset your password: {reset_url}",
             from_email="firstcode.in@tejasvaij.com",
             recipient_list=[email],
             fail_silently=False,
         )
 
-        return Response({"message": "OTP sent to email."}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Password reset link sent to email."}, status=status.HTTP_200_OK
+        )
 
 
 class VerifyOTPRegister(APIView):
@@ -187,7 +199,7 @@ class VerifyOTPRegister(APIView):
         if user_serializer.is_valid():
             user = user_serializer.save()
             token = Token.objects.create(user=user)
-            
+
             # Create UserProfile for the user
             UserProfile.objects.create(user=user)
 
@@ -195,7 +207,10 @@ class VerifyOTPRegister(APIView):
             try:
                 default_subscription = UserSubscription.objects.get(level=0)
             except UserSubscription.DoesNotExist:
-                return Response({"error": "Default subscription not found"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {"error": "Default subscription not found"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
             # Assign the subscription to the user
             UserSubscription.objects.create(
@@ -203,7 +218,8 @@ class VerifyOTPRegister(APIView):
                 subscription=default_subscription.subscription,
                 amount=default_subscription.subscription.price,
                 subscription_start_date=timezone.now(),
-                subscription_end_date=timezone.now() + timedelta(days=default_subscription.subscription.validity),
+                subscription_end_date=timezone.now()
+                + timedelta(days=default_subscription.subscription.validity),
                 status="Current",
             )
 
@@ -274,36 +290,46 @@ class VerifyOTPLogin(APIView):
         )
 
 
-class VertifyOTPResetPassword(APIView):
+class PasswordResetConfirm(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         email = request.data.get("email")
-        otp_code = request.data.get("otp")
+        token = request.data.get("token")
         new_password = request.data.get("new_password")
 
-        if not all([email, otp_code, new_password]):
+        if not all([email, token, new_password]):
             return Response(
-                {"error": "Email, OTP, and new password are required."},
+                {"error": "Email, token, and new password are required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Validate OTP
+        # Validate the token
         try:
-            otp_obj = OTP.objects.get(email=email, code=otp_code, expires_at__gt=now())
-        except OTP.DoesNotExist:
+            reset_token = PasswordResetToken.objects.get(
+                email=email, token=token, expires_at__gt=now(), is_used=False
+            )
+        except PasswordResetToken.DoesNotExist:
             return Response(
-                {"error": "Invalid or expired OTP."}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Invalid or expired token."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Update user's password
-        user = User.objects.get(email=email)
+        # Update the user's password
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
         user.password = make_password(new_password)
         user.save()
 
-        # Optionally, delete the OTP after use
-        otp_obj.delete()
+        # Mark the token as used
+        reset_token.is_used = True
+        reset_token.save()
 
         return Response(
             {"message": "Password reset successfully."}, status=status.HTTP_200_OK
