@@ -7,7 +7,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
-from user.models import User
+from subscription.models import UserSubscription
+from user.models import User, UserProfile
 from user.serializers import UserSerializer
 from utils.email_dynamic_sender import send_email_with_dynamic_sender
 from .models import OTP
@@ -177,8 +178,7 @@ class VerifyOTPRegister(APIView):
         otp_obj.is_used = True
         otp_obj.save()
 
-        # Here, create the user since OTP is valid
-        # Assuming user_data is a dict that User model can accept
+        # Create the user since OTP is valid
         user_data["email"] = email  # Ensure email is included in user_data
         if "password" in user_data:
             user_data["password"] = make_password(user_data["password"])
@@ -187,6 +187,26 @@ class VerifyOTPRegister(APIView):
         if user_serializer.is_valid():
             user = user_serializer.save()
             token = Token.objects.create(user=user)
+            
+            # Create UserProfile for the user
+            UserProfile.objects.create(user=user)
+
+            # Fetch the subscription with level 0
+            try:
+                default_subscription = UserSubscription.objects.get(level=0)
+            except UserSubscription.DoesNotExist:
+                return Response({"error": "Default subscription not found"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # Assign the subscription to the user
+            UserSubscription.objects.create(
+                user=user,
+                subscription=default_subscription.subscription,
+                amount=default_subscription.subscription.price,
+                subscription_start_date=timezone.now(),
+                subscription_end_date=timezone.now() + timedelta(days=default_subscription.subscription.validity),
+                status="Current",
+            )
+
             return Response(
                 {"token": token.key, "user": user_serializer.data},
                 status=status.HTTP_200_OK,
