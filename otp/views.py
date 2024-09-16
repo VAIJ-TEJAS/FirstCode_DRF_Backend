@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.urls import reverse
@@ -10,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
-from subscription.models import UserSubscription
+from subscription.models import Subscription, UserSubscription
 from user.models import User, UserProfile
 from user.serializers import UserSerializer
 from utils.email_dynamic_sender import send_email_with_dynamic_sender
@@ -161,6 +162,7 @@ class VerifyOTPRegister(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
+    @transaction.atomic
     def post(self, request, *args, **kwargs):
         email = request.data.get("email")
         otp_code = request.data.get("otp")
@@ -200,28 +202,27 @@ class VerifyOTPRegister(APIView):
             user = user_serializer.save()
             token = Token.objects.create(user=user)
 
-            # Create UserProfile for the user
-            UserProfile.objects.create(user=user)
-
             # Fetch the subscription with level 0
             try:
-                default_subscription = UserSubscription.objects.get(level=0)
-            except UserSubscription.DoesNotExist:
+                default_subscription = Subscription.objects.get(level=0)
+            except Subscription.DoesNotExist:
                 return Response(
                     {"error": "Default subscription not found"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
             # Assign the subscription to the user
-            UserSubscription.objects.create(
+            new_subscription = UserSubscription.objects.create(
                 user=user,
-                subscription=default_subscription.subscription,
-                amount=default_subscription.subscription.price,
+                subscription=default_subscription,
                 subscription_start_date=timezone.now(),
                 subscription_end_date=timezone.now()
-                + timedelta(days=default_subscription.subscription.validity),
+                + timedelta(days=default_subscription.validity),
                 status="Current",
             )
+
+            # Create UserProfile for the user
+            UserProfile.objects.create(user=user, current_subscription=new_subscription)
 
             return Response(
                 {"token": token.key, "user": user_serializer.data},
