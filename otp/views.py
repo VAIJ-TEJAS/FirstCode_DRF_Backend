@@ -138,11 +138,9 @@ class SendPasswordResetLink(APIView):
             email=email, token=token, expires_at=expires_at, is_used=False
         )
 
-        # Build the password reset link (frontend route can be defined in your app)
-        reset_url = request.build_absolute_uri(
-            reverse("reset_password_confirm")  # Define this URL in your app
-        )
-        reset_url = f"{reset_url}?email={email}&token={token}"
+        # Build the password reset link
+        # Change this to use localhost:3000
+        reset_url = f"https://first-code-react-frontend.vercel.app/auth/reset-password/?email={email}&token={token}"
 
         # Send the reset password email
         send_email_with_dynamic_sender(
