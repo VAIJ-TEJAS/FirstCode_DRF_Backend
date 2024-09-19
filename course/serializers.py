@@ -163,6 +163,7 @@ class BaseCourseSerializer(serializers.ModelSerializer):
     can_start = serializers.SerializerMethodField()
     has_start_limit_exceeded = serializers.SerializerMethodField()
     has_already_started = serializers.SerializerMethodField()
+    button_text = serializers.SerializerMethodField()
 
     class Meta:
         abstract = True
@@ -225,6 +226,18 @@ class BaseCourseSerializer(serializers.ModelSerializer):
             ).exists()
         return False
 
+    def get_button_text(self, obj):
+        if self.get_has_start_limit_exceeded(obj):
+            return "Start Limit Exceeded" 
+        if self.get_has_already_started(obj):
+            return "Continue"
+        if self.get_has_enroll_limit_exceeded(obj):
+            return "Enroll Limit Exceeded"  
+        if self.get_can_start(obj):
+            return "Start"
+        if self.get_can_enroll(obj) and not self.get_has_already_enrolled(obj):
+            return "Enroll"
+        return "Unavailable"
 
 class OverviewCourseSerializer(BaseCourseSerializer):
     tags = TagSerializer(many=True)
@@ -247,6 +260,7 @@ class OverviewCourseSerializer(BaseCourseSerializer):
             "can_start",
             "has_start_limit_exceeded",
             "has_already_started",
+            "button_text"
         ]
 
 
@@ -273,6 +287,7 @@ class MyOverviewCourseSerializer(BaseCourseSerializer):
             "can_start",
             "has_start_limit_exceeded",
             "has_already_started",
+            "button_text"
         ]
 
     def get_user_course(self, obj):
