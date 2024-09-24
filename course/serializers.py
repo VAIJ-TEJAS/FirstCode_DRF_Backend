@@ -66,8 +66,8 @@ class MyOverviewLessonSerializer(serializers.ModelSerializer):
     def get_user_lesson(self, obj):
         user_lessons = UserLesson.objects.filter(
             lesson=obj, user=self.context["request"].user
-        )
-        serializer = UserLessonSerializer(user_lessons, many=True)
+        ).first()
+        serializer = UserLessonSerializer(user_lessons)
         return serializer.data
 
 
@@ -75,17 +75,39 @@ class MyDetailedLessonSerializer(serializers.ModelSerializer):
     files = FileSerializer(many=True)
     tasks = MyTaskSerializer(many=True)
     user_lesson = serializers.SerializerMethodField()
+    previous_lesson_id = serializers.SerializerMethodField()
+    next_lesson_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = "__all__"
 
     def get_user_lesson(self, obj):
-        user_lessons = UserLesson.objects.filter(
+        user_lesson = UserLesson.objects.filter(
             lesson=obj, user=self.context["request"].user
-        )
-        serializer = UserLessonSerializer(user_lessons, many=True)
+        ).first()
+        serializer = UserLessonSerializer(user_lesson)
         return serializer.data
+    
+    def get_previous_lesson_id(self, obj):
+        # Fetch the lessons for the current chapter
+        chapter_lessons = Lesson.objects.filter(chapter=obj.chapter).order_by('id')
+        # Get the current lesson's index in the chapter
+        current_index = list(chapter_lessons).index(obj)
+        # Find the previous lesson, if it exists
+        if current_index > 0:
+            return chapter_lessons[current_index - 1].id
+        return None  # No previous lesson
+
+    def get_next_lesson_id(self, obj):
+        # Fetch the lessons for the current chapter
+        chapter_lessons = Lesson.objects.filter(chapter=obj.chapter).order_by('id')
+        # Get the current lesson's index in the chapter
+        current_index = list(chapter_lessons).index(obj)
+        # Find the next lesson, if it exists
+        if current_index < len(chapter_lessons) - 1:
+            return chapter_lessons[current_index + 1].id
+        return None  # No next lesson
 
 
 class ChapterSerializer(serializers.ModelSerializer):
