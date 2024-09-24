@@ -49,6 +49,7 @@ router.register(r'webhook', subscription_views.PaymentWebhookViewSet, basename='
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
+    path('google-complete/', user_views.google_complete, name='google_complete'),
     path('generate-otp-register/', GenerateOTPRegister.as_view(), name='generate-otp-register'),
     path('verify-otp/', VerifyOTPRegister.as_view(), name='verify-otp'),
     path('generate-otp-login/', GenerateOTPLogin.as_view(), name='generate-otp-login'),
