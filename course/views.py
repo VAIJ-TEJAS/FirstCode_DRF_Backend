@@ -18,6 +18,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
+
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     filter_backends = (SearchFilter,)
@@ -27,6 +28,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         if self.action == 'retrieve':
             return DetailedCourseSerializer
         return OverviewCourseSerializer
+
 
 class MyCourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
