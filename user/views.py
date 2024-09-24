@@ -103,8 +103,7 @@ class Signin(ObtainAuthToken):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def google_complete(request):
-    client_id = os.getenv("GOOGLE_CLIENT_ID")
-    # client_secret = "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"
+    client_id = os.getenv("GOOGLE_OAUTH2_KEY")
 
     token = request.data.get("token")
 
