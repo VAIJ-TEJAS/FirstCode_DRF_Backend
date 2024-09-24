@@ -4,13 +4,20 @@ from django.utils import timezone
 from django.db.models import Count
 from datetime import timedelta, datetime
 from course.models import Course, UserChapter, UserCourse, UserLesson, UserTask
-from course.serializers import OverviewCourseSerializer, UserChapterSerializer, UserCourseSerializer, UserLessonSerializer, UserTaskSerializer
+from course.serializers import (
+    OverviewCourseSerializer,
+    UserChapterSerializer,
+    UserCourseSerializer,
+    UserLessonSerializer,
+    UserTaskSerializer,
+)
 from liveclass.models import LiveClass, UserLiveClass
 from liveclass.serializers import LiveClassSerializer, UserLiveClassSerializer
 from subscription.models import UserSubscription
 from .models import Pattern, UserProfile
 from itertools import chain
 from operator import attrgetter
+from django.contrib.auth import login
 from django.contrib.auth.models import User
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -20,6 +27,11 @@ from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.views import ObtainAuthToken
 from .serializers import UserProfileSerializer, UserSerializer
+from rest_framework.decorators import api_view, permission_classes
+from google.oauth2 import id_token
+from google.auth.transport import requests
+import os
+
 
 class Signup(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -41,7 +53,10 @@ class Signup(viewsets.ModelViewSet):
         try:
             default_subscription = UserSubscription.objects.get(level=0)
         except UserSubscription.DoesNotExist:
-            return Response({"error": "Default subscription not found"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Default subscription not found"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         # Assign the subscription to the user
         UserSubscription.objects.create(
@@ -49,7 +64,8 @@ class Signup(viewsets.ModelViewSet):
             subscription=default_subscription.subscription,
             amount=default_subscription.subscription.price,
             subscription_start_date=timezone.now(),
-            subscription_end_date=timezone.now() + timedelta(days=default_subscription.subscription.validity),
+            subscription_end_date=timezone.now()
+            + timedelta(days=default_subscription.subscription.validity),
             status="Current",
         )
 
@@ -82,6 +98,55 @@ class Signin(ObtainAuthToken):
         serialized_user = user_serializer.data
 
         return Response({"token": old_token.key, "user": serialized_user})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def google_complete(request):
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    # client_secret = "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"
+
+    token = request.data.get("token")
+
+    if not token:
+        print("Token is missing")
+        return Response({"error": "Token is missing"}, status=400)
+
+    # Validate the token and get user info
+    try:
+        idinfo = id_token.verify_oauth2_token(token, requests.Request(), client_id)
+
+        # idinfo['sub'] is user's Google ID
+        email = idinfo["email"]
+        first_name = idinfo.get("given_name", "")
+        last_name = idinfo.get("family_name", "")
+
+        # Try to retrieve the user by their email
+        user, created = User.objects.get_or_create(
+            username=email,
+            defaults={"email": email, "first_name": first_name, "last_name": last_name},
+        )
+
+        if created:
+            user.set_unusable_password()  # Important if password login isn't meant to be used
+            user.save()
+
+        # Authenticate session
+        login(request, user)
+
+        # Create a token for your DRF TokenAuthentication
+        token, created = Token.objects.get_or_create(user=user)
+
+        # Serialize the user object
+        user_serializer = UserSerializer(token.user)
+        serialized_user = user_serializer.data
+
+        return Response({"token": token.key, "user": serialized_user})
+
+    except ValueError:
+        # Invalid token
+        print("Invalid token")
+        return Response({"error": "Invalid token"}, status=400)
 
 
 class UserNameUpdateViewSet(viewsets.ModelViewSet):
@@ -120,33 +185,43 @@ class UserDeleteViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         user = self.request.user
-        
+
         # Ensure UserProfile is saved
         profile, created = UserProfile.objects.get_or_create(user=user)
-        
+
         # Delete the associated UserProfile
         profile.delete()
-        
+
         # Delete the user
         user.delete()
-        
+
         # Optionally, delete all tokens related to the user
         Token.objects.filter(user_id=user.id).delete()
-        
-        return Response({"detail": "Account successfully deleted."}, status=status.HTTP_204_NO_CONTENT)
+
+        return Response(
+            {"detail": "Account successfully deleted."},
+            status=status.HTTP_204_NO_CONTENT,
+        )
 
 
-class PatternAssignmentViewSet(viewsets.GenericViewSet, viewsets.mixins.CreateModelMixin):
+class PatternAssignmentViewSet(
+    viewsets.GenericViewSet, viewsets.mixins.CreateModelMixin
+):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
-    http_method_names = ['post']
+    http_method_names = ["post"]
 
     def create(self, request, *args, **kwargs):
         user = self.request.user
-        pattern_code = request.data.get('pattern_code')  # Get the pattern_code from request
+        pattern_code = request.data.get(
+            "pattern_code"
+        )  # Get the pattern_code from request
 
         if not pattern_code:
-            return Response({"detail": "Pattern code is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Pattern code is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Look up the pattern by code
         pattern = get_object_or_404(Pattern, code=pattern_code)
@@ -158,11 +233,15 @@ class PatternAssignmentViewSet(viewsets.GenericViewSet, viewsets.mixins.CreateMo
         profile.pattern = pattern
         profile.save()
 
-        return Response({"detail": "Pattern assigned successfully."}, status=status.HTTP_200_OK)
+        return Response(
+            {"detail": "Pattern assigned successfully."}, status=status.HTTP_200_OK
+        )
 
 
-class LearningProgressGraphViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
-    http_method_names = ['get']
+class LearningProgressGraphViewSet(
+    viewsets.GenericViewSet, viewsets.mixins.ListModelMixin
+):
+    http_method_names = ["get"]
 
     def list(self, request, *args, **kwargs):
         user = request.user
@@ -171,10 +250,14 @@ class LearningProgressGraphViewSet(viewsets.GenericViewSet, viewsets.mixins.List
 
         # Get lessons completed by the user in the past two weeks
         lessons_completed = (
-            UserLesson.objects.filter(user=user, last_modified__date__range=[two_weeks_ago, today], status='Completed')
-            .values('last_modified__date')
-            .annotate(completed_count=Count('id'))
-            .order_by('last_modified__date')
+            UserLesson.objects.filter(
+                user=user,
+                last_modified__date__range=[two_weeks_ago, today],
+                status="Completed",
+            )
+            .values("last_modified__date")
+            .annotate(completed_count=Count("id"))
+            .order_by("last_modified__date")
         )
 
         # Create a dictionary to hold the data for the past 14 days
@@ -185,8 +268,8 @@ class LearningProgressGraphViewSet(viewsets.GenericViewSet, viewsets.mixins.List
 
         # Populate the data with the actual completed lessons
         for lesson in lessons_completed:
-            date = lesson['last_modified__date']
-            completed_count = lesson['completed_count']
+            date = lesson["last_modified__date"]
+            completed_count = lesson["completed_count"]
             progress_data[date]["completed_lessons"] = completed_count
 
         # Calculate the comparison with the previous day
@@ -196,33 +279,35 @@ class LearningProgressGraphViewSet(viewsets.GenericViewSet, viewsets.mixins.List
             previous_day_lessons = data["completed_lessons"]
 
         # Convert the data to a list and exclude future dates
-        progress_list = [
-            data for day, data in progress_data.items() if day <= today
-        ]
+        progress_list = [data for day, data in progress_data.items() if day <= today]
 
         return Response(progress_list, status=status.HTTP_200_OK)
-    
+
 
 class MonthlyProgressViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
-    http_method_names = ['get']
+    http_method_names = ["get"]
 
     def list(self, request, *args, **kwargs):
         user = request.user
-        
+
         # Optionally, get the year and month from query parameters (default to the current month)
-        year = int(request.query_params.get('year', timezone.now().year))
-        month = int(request.query_params.get('month', timezone.now().month))
-        
+        year = int(request.query_params.get("year", timezone.now().year))
+        month = int(request.query_params.get("month", timezone.now().month))
+
         # Determine the first and last days of the month
         first_day = datetime(year, month, 1).date()
         last_day = datetime(year, month, monthrange(year, month)[1]).date()
 
         # Get lessons completed by the user in the specified month
         lessons_completed = (
-            UserLesson.objects.filter(user=user, last_modified__date__range=[first_day, last_day], status='Completed')
-            .values('last_modified__date')
-            .annotate(completed_count=Count('id'))
-            .order_by('last_modified__date')
+            UserLesson.objects.filter(
+                user=user,
+                last_modified__date__range=[first_day, last_day],
+                status="Completed",
+            )
+            .values("last_modified__date")
+            .annotate(completed_count=Count("id"))
+            .order_by("last_modified__date")
         )
 
         # Create a dictionary to hold the data for each day of the month
@@ -233,34 +318,42 @@ class MonthlyProgressViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelM
 
         # Populate the data with the actual completed lessons
         for lesson in lessons_completed:
-            date = lesson['last_modified__date']
-            completed_count = lesson['completed_count']
+            date = lesson["last_modified__date"]
+            completed_count = lesson["completed_count"]
             progress_data[date]["completed_lessons"] = completed_count
 
         # Convert the data to a list
         progress_list = list(progress_data.values())
 
         return Response(progress_list, status=status.HTTP_200_OK)
-    
+
 
 class PieChartViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
     permission_classes = [IsAuthenticated]
-    http_method_names = ['get']
+    http_method_names = ["get"]
 
     def list(self, request, *args, **kwargs):
         user = request.user
 
         # Query for courses by status
-        enrolled_courses = UserCourse.objects.filter(user=user, status='Enrolled').count()
-        started_courses = UserCourse.objects.filter(user=user, status='Started').count()
-        in_progress_courses = UserCourse.objects.filter(user=user, status='In Progress').count()
-        completed_courses = UserCourse.objects.filter(user=user, status='Completed').count()
+        enrolled_courses = UserCourse.objects.filter(
+            user=user, status="Enrolled"
+        ).count()
+        started_courses = UserCourse.objects.filter(user=user, status="Started").count()
+        in_progress_courses = UserCourse.objects.filter(
+            user=user, status="In Progress"
+        ).count()
+        completed_courses = UserCourse.objects.filter(
+            user=user, status="Completed"
+        ).count()
 
         # Query for total enrolled classes (lessons)
         enrolled_classes = UserLesson.objects.filter(user=user).count()
 
         # Retrieve the active subscription for the user
-        active_subscription = UserSubscription.objects.filter(user=user, status='Current').first()
+        active_subscription = UserSubscription.objects.filter(
+            user=user, status="Current"
+        ).first()
 
         # Initialize limits
         course_limit = 0
@@ -285,24 +378,32 @@ class PieChartViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
 
 
 class EventViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
-    http_method_names = ['get']
+    http_method_names = ["get"]
 
     def list(self, request, *args, **kwargs):
         user = request.user
-        overview = request.query_params.get('overview', None)
+        overview = request.query_params.get("overview", None)
 
         # Get the user's completed courses, chapters, lessons, tasks, and live classes
-        courses = UserCourse.objects.filter(user=user, status='Completed').order_by('-last_modified')
-        chapters = UserChapter.objects.filter(user=user, status='Completed').order_by('-last_modified')
-        lessons = UserLesson.objects.filter(user=user, status='Completed').order_by('-last_modified')
-        tasks = UserTask.objects.filter(user=user).order_by('-last_modified')
-        live_classes = UserLiveClass.objects.filter(user=user, status='Completed').order_by('-last_modified')
+        courses = UserCourse.objects.filter(user=user, status="Completed").order_by(
+            "-last_modified"
+        )
+        chapters = UserChapter.objects.filter(user=user, status="Completed").order_by(
+            "-last_modified"
+        )
+        lessons = UserLesson.objects.filter(user=user, status="Completed").order_by(
+            "-last_modified"
+        )
+        tasks = UserTask.objects.filter(user=user).order_by("-last_modified")
+        live_classes = UserLiveClass.objects.filter(
+            user=user, status="Completed"
+        ).order_by("-last_modified")
 
         # Combine all the querysets into a single list, sorted by last_modified
         events = sorted(
             chain(courses, chapters, lessons, tasks, live_classes),
-            key=attrgetter('last_modified'),
-            reverse=True
+            key=attrgetter("last_modified"),
+            reverse=True,
         )
 
         # If overview is present in query params, limit the results to the latest 5
@@ -314,54 +415,62 @@ class EventViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
         for event in events:
             if isinstance(event, UserCourse):
                 serialized_data = UserCourseSerializer(event).data
-                serialized_data['type'] = 'course'
+                serialized_data["type"] = "course"
             elif isinstance(event, UserChapter):
                 serialized_data = UserChapterSerializer(event).data
-                serialized_data['type'] = 'chapter'
+                serialized_data["type"] = "chapter"
             elif isinstance(event, UserLesson):
                 serialized_data = UserLessonSerializer(event).data
-                serialized_data['type'] = 'lesson'
+                serialized_data["type"] = "lesson"
             elif isinstance(event, UserTask):
                 serialized_data = UserTaskSerializer(event).data
-                serialized_data['type'] = 'task'
+                serialized_data["type"] = "task"
             elif isinstance(event, UserLiveClass):
                 serialized_data = UserLiveClassSerializer(event).data
-                serialized_data['type'] = 'live_class'
+                serialized_data["type"] = "live_class"
 
             serialized_events.append(serialized_data)
 
         return Response(serialized_events, status=status.HTTP_200_OK)
-    
+
 
 class LeftCoursesViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
-    http_method_names = ['get']
+    http_method_names = ["get"]
 
     def list(self, request, *args, **kwargs):
         user = request.user
 
         # Fetch UserCourse objects that are not completed (i.e., where the user left off)
-        left_courses = UserCourse.objects.filter(user=user).exclude(status='Completed').order_by('-last_modified')
+        left_courses = (
+            UserCourse.objects.filter(user=user)
+            .exclude(status="Completed")
+            .order_by("-last_modified")
+        )
 
         # Serialize the data
         serialized_courses = UserCourseSerializer(left_courses, many=True).data
 
         return Response(serialized_courses, status=status.HTTP_200_OK)
-    
 
-class LatestCoursesAndClassesViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
+
+class LatestCoursesAndClassesViewSet(
+    viewsets.GenericViewSet, viewsets.mixins.ListModelMixin
+):
     permission_classes = [IsAuthenticated]
-    http_method_names = ['get']
+    http_method_names = ["get"]
 
     def list(self, request, *args, **kwargs):
         # Retrieve the latest courses and classes
-        latest_courses = Course.objects.all().order_by('-created_at')[:4]
-        latest_classes = LiveClass.objects.all().order_by('-created_at')[:4]
-        
+        latest_courses = Course.objects.all().order_by("-created_at")[:4]
+        latest_classes = LiveClass.objects.all().order_by("-created_at")[:4]
+
         # Combine the latest courses and classes
         combined_items = list(latest_courses) + list(latest_classes)
-        
+
         # Sort combined items by creation date (latest first)
-        combined_items = sorted(combined_items, key=attrgetter('created_at'), reverse=True)[:4]
+        combined_items = sorted(
+            combined_items, key=attrgetter("created_at"), reverse=True
+        )[:4]
 
         # Serialize each item with the appropriate serializer
         serialized_items = []
