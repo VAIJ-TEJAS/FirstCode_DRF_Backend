@@ -5,6 +5,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.decorators import action
 from .models import (
     Category, Course, Chapter, Lesson, Task,
     UserCourse, UserChapter, UserLesson, UserTask
@@ -130,6 +131,29 @@ class UserCourseViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['delete'], url_path='unenroll', url_name='unenroll')
+    @transaction.atomic
+    def unenroll(self, request, pk=None):
+        # Get the UserCourse instance
+        user_course = get_object_or_404(UserCourse, pk=pk, user=request.user)
+        
+        # Check if the course has not started
+        if user_course.status != 'Enrolled':
+            return Response(
+                {'detail': 'Cannot unenroll from a course that has already started.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Delete the UserCourse instance to unenroll the user
+        user_course.delete()
+        
+        # Optionally: Decrement enrolled_courses for the user's subscription
+        user_subscription = request.user.subscriptions.filter(status='Current').first()
+        if user_subscription and user_subscription.enrolled_courses > 0:
+            user_subscription.enrolled_courses -= 1
+            user_subscription.save()
+
+        return Response({'detail': 'Successfully unenrolled from the course.'}, status=status.HTTP_204_NO_CONTENT)
 
 class UserTaskViewSet(viewsets.ModelViewSet):
     queryset = UserTask.objects.all()
@@ -146,7 +170,7 @@ class UserTaskViewSet(viewsets.ModelViewSet):
         task = get_object_or_404(Task, id=task_id)
 
         # Create or update the UserTask instance
-        user_task = UserTask.objects.update_or_create(
+        user_task, created = UserTask.objects.update_or_create(
             user=request.user,
             task=task,
             defaults={}
@@ -158,13 +182,13 @@ class UserTaskViewSet(viewsets.ModelViewSet):
         # Calculate progress for UserLesson
         completed_tasks_count = UserTask.objects.filter(user=request.user, task__lesson=lesson).count()
         total_tasks_count = Task.objects.filter(lesson=lesson).count()
-        progress = completed_tasks_count / total_tasks_count if total_tasks_count else 0.0
+        progress = ( completed_tasks_count / total_tasks_count if total_tasks_count else 0.0 ) * 100
 
         # Determine the status based on progress
-        lesson_status = 'Completed' if progress == 1 else 'In Progress'
+        lesson_status = 'Completed' if progress == 100 else 'In Progress'
 
         # Retrieve or create the UserLesson instance
-        UserLesson.objects.update_or_create(
+        user_lesson = UserLesson.objects.update_or_create(
             user=request.user,
             lesson=lesson,
             defaults={
@@ -180,7 +204,7 @@ class UserTaskViewSet(viewsets.ModelViewSet):
         # Calculate progress for UserChapter
         completed_lessons_count = UserLesson.objects.filter(user=request.user, lesson__chapter=chapter, status='Completed').count()
         total_lessons_count = Lesson.objects.filter(chapter=chapter).count()
-        chapter_progress = completed_lessons_count / total_lessons_count if total_lessons_count else 0.0
+        chapter_progress = ( completed_lessons_count / total_lessons_count if total_lessons_count else 0.0 ) * 100
 
         # Determine the status based on progress
         chapter_status = 'Completed' if chapter_progress == 1 else 'In Progress'
@@ -202,7 +226,8 @@ class UserTaskViewSet(viewsets.ModelViewSet):
         # Calculate progress for UserCourse
         completed_chapters_count = UserChapter.objects.filter(user=request.user, chapter__track__course=course, status='Completed').count()
         total_chapters_count = Chapter.objects.filter(track__course=course).count()
-        course_progress = completed_chapters_count / total_chapters_count if total_chapters_count else 0.0
+
+        course_progress = ( completed_chapters_count / total_chapters_count if total_chapters_count else 0.0 ) * 100
 
         # Determine the status based on progress
         course_status = 'Completed' if course_progress == 1 else 'In Progress'
@@ -224,5 +249,5 @@ class UserTaskViewSet(viewsets.ModelViewSet):
             user_course.save()
 
         # Serialize and return the created or updated UserTask instance
-        serializer = self.get_serializer(user_task)
+        serializer = self.get_serializer(user_task)  # Extracting the first element of the tuple
         return Response(serializer.data, status=status.HTTP_201_CREATED)

@@ -45,8 +45,8 @@ class MyTaskSerializer(serializers.ModelSerializer):
     def get_user_task(self, obj):
         user_task = UserTask.objects.filter(
             task=obj, user=self.context["request"].user
-        )
-        serializer = UserTaskSerializer(user_task, many=True)
+        ).first()
+        serializer = UserTaskSerializer(user_task)
         return serializer.data
 
 
@@ -244,7 +244,7 @@ class BaseCourseSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             return UserCourse.objects.filter(
-                user=request.user, course=obj, status="Started"
+                user=request.user, course=obj, status__in=["Started", "In Progress"]
             ).exists()
         return False
 
