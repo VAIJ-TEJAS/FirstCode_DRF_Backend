@@ -1,14 +1,11 @@
 import nested_admin
 from django.contrib import admin
 from .models import (
-    Category, Tag, Course, Track, Chapter, Lesson, File, Task,
+    Category, Tag, Course, Track, Chapter, Lesson, Task,
     UserCourse, UserChapter, UserLesson, UserTask
 )
 
 # Inlines
-class FileInline(nested_admin.NestedTabularInline):
-    model = File
-    extra = 1
 
 class TaskInline(nested_admin.NestedTabularInline):
     model = Task
@@ -17,7 +14,7 @@ class TaskInline(nested_admin.NestedTabularInline):
 class LessonInline(nested_admin.NestedTabularInline):
     model = Lesson
     extra = 1
-    inlines = [FileInline, TaskInline]
+    inlines = [TaskInline]
 
 class ChapterInline(nested_admin.NestedTabularInline):
     model = Chapter
@@ -48,20 +45,19 @@ class CourseAdmin(nested_admin.NestedModelAdmin):
     inlines = [TrackInline]
 
 @admin.register(Track)
-class TrackAdmin(admin.ModelAdmin):
+class TrackAdmin(nested_admin.NestedModelAdmin):
     list_display = ['name', 'course', 'pattern']
+    inlines = [ChapterInline]
 
 @admin.register(Chapter)
-class ChapterAdmin(admin.ModelAdmin):
+class ChapterAdmin(nested_admin.NestedModelAdmin):
     list_display = ['name', 'track']
+    inlines = [LessonInline]
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
     list_display = ['name', 'chapter', 'playground_type']
-
-@admin.register(File)
-class FileAdmin(admin.ModelAdmin):
-    list_display = ['lesson', 'file']
+    inlines = [TaskInline]
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):

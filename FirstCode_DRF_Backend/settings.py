@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'liveclass',
     'order',
     'otp',
+    'quote',
     'subscription',
     'user'
 ]
@@ -74,7 +75,7 @@ ROOT_URLCONF = 'FirstCode_DRF_Backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

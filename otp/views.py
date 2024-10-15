@@ -51,7 +51,7 @@ class GenerateOTPRegister(APIView):
         send_email_with_dynamic_sender(
             subject="Your OTP",
             message=f"Your OTP is {otp_code}. It will expire in 10 minutes.",
-            from_email="firstcode.in@tejasvaij.com",
+            from_email="noreply@firstcode.in",
             recipient_list=[email],
             fail_silently=False,
         )
@@ -101,7 +101,7 @@ class GenerateOTPLogin(APIView):
         send_email_with_dynamic_sender(
             subject="Your Login OTP",
             message=f"Your OTP is {otp_code}. It will expire in 10 minutes.",
-            from_email="firstcode.in@tejasvaij.com",
+            from_email="noreply@firstcode.in",
             recipient_list=[user.email],
             fail_silently=False,
         )
@@ -146,7 +146,7 @@ class SendPasswordResetLink(APIView):
         send_email_with_dynamic_sender(
             subject="Password Reset Link",
             message=f"Click on the link to reset your password: {reset_url}",
-            from_email="firstcode.in@tejasvaij.com",
+            from_email="noreply@firstcode.in",
             recipient_list=[email],
             fail_silently=False,
         )

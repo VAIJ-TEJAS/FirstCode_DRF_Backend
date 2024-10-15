@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from order.models import Order
 from user.models import UserProfile
 from .models import Subscription, UserSubscription
-from .serializers import ListSubscriptionSerializer, UserSubscriptionSerializer
+from .serializers import SubscriptionSerializer, UserSubscriptionSerializer
 
 import razorpay
 import time
@@ -20,7 +20,7 @@ client = razorpay.Client(auth=(os.getenv("KEY_ID"), os.getenv("KEY_SECRET")))
 
 
 class ListSubscriptionViewSet(viewsets.ModelViewSet):
-    serializer_class = ListSubscriptionSerializer
+    serializer_class = SubscriptionSerializer
     http_method_names = ["get"]
 
     def get_queryset(self):

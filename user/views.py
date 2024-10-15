@@ -415,18 +415,23 @@ class EventViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
             if isinstance(event, UserCourse):
                 serialized_data = UserCourseSerializer(event).data
                 serialized_data["type"] = "course"
+                serialized_data["description"] = f"{event.course.name}"
             elif isinstance(event, UserChapter):
                 serialized_data = UserChapterSerializer(event).data
                 serialized_data["type"] = "chapter"
+                serialized_data["description"] = f"{event.chapter.name}"
             elif isinstance(event, UserLesson):
                 serialized_data = UserLessonSerializer(event).data
                 serialized_data["type"] = "lesson"
+                serialized_data["description"] = f"{event.lesson.name} in chapter {event.lesson.chapter.name}"
             elif isinstance(event, UserTask):
                 serialized_data = UserTaskSerializer(event).data
                 serialized_data["type"] = "task"
+                serialized_data["description"] = f"{event.task.name}"
             elif isinstance(event, UserLiveClass):
                 serialized_data = UserLiveClassSerializer(event).data
                 serialized_data["type"] = "live_class"
+                serialized_data["description"] = f"Attended live class - {event.live_class.name}"
 
             serialized_events.append(serialized_data)
 
@@ -480,3 +485,81 @@ class LatestCoursesAndClassesViewSet(
                 serialized_items.append(LiveClassSerializer(item).data)
 
         return Response(serialized_items, status=status.HTTP_200_OK)
+
+
+class StreakViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get"]
+
+    def list(self, request, *args, **kwargs):
+        user = request.user
+        today = timezone.now().date()
+        streak = 0
+        longest_streak = 0
+        current_streak = 0
+
+        # Initialize date ranges
+        current_streak_start = None
+        current_streak_end = None
+        longest_streak_start = None
+        longest_streak_end = None
+
+        # Set today's date as the starting point for the streak check
+        day = today
+
+        # Get all lessons completed by the user, ordered by date
+        completed_lessons_by_day = UserLesson.objects.filter(
+            user=user, status="Completed"
+        ).order_by("-last_modified__date")
+
+        if not completed_lessons_by_day.exists():
+            # No completed lessons, return streak of 0 and no date range
+            return Response({
+                "current_streak": 0,
+                "current_streak_dates": None,
+                "longest_streak": 0,
+                "longest_streak_dates": None
+            }, status=status.HTTP_200_OK)
+
+        # Track consecutive streak dates
+        current_streak_end = today
+        while True:
+            completed_lessons = UserLesson.objects.filter(
+                user=user, last_modified__date=day, status="Completed"
+            ).count()
+
+            if completed_lessons > 0:
+                if current_streak == 0:
+                    current_streak_end = day
+                current_streak_start = day
+                current_streak += 1
+                streak += 1
+                # Check if current streak exceeds the longest streak
+                if current_streak > longest_streak:
+                    longest_streak = current_streak
+                    longest_streak_start = current_streak_start
+                    longest_streak_end = current_streak_end
+            else:
+                current_streak = 0  # Reset streak count if no completed lessons
+
+            day = day - timedelta(days=1)
+
+            if not UserLesson.objects.filter(
+                user=user, last_modified__date=day, status="Completed"
+            ).exists():
+                break
+
+        # Format dates as "Oct 2 - Oct 11"
+        def format_date_range(start_date, end_date):
+            if start_date and end_date:
+                return f"{start_date.strftime('%b %d')} - {end_date.strftime('%b %d')}"
+            return None
+
+        streak_data = {
+            "current_streak": streak,
+            "current_streak_dates": format_date_range(current_streak_start, current_streak_end),
+            "longest_streak": longest_streak,
+            "longest_streak_dates": format_date_range(longest_streak_start, longest_streak_end),
+        }
+
+        return Response(streak_data, status=status.HTTP_200_OK)

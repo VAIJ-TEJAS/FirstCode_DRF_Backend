@@ -6,6 +6,8 @@ class BaseLiveClassSerializer(serializers.ModelSerializer):
     has_enroll_limit_exceeded = serializers.SerializerMethodField()
     has_already_enrolled = serializers.SerializerMethodField()
     button_text = serializers.SerializerMethodField()
+    user_live_class = serializers.SerializerMethodField()
+    class_link = serializers.SerializerMethodField()
 
     class Meta:
         abstract = True
@@ -47,6 +49,25 @@ class BaseLiveClassSerializer(serializers.ModelSerializer):
             return "Enroll"
         return "Upgrade Subscription"
 
+    def get_user_live_class(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            # Fetch the UserLiveClass object for the current user and live class
+            user_enrollment = UserLiveClass.objects.filter(user=request.user, live_class=obj).first()
+            if user_enrollment:
+                # Use the UserLiveClassSerializer to serialize the object
+                return UserLiveClassSerializer(user_enrollment).data
+        return None
+    
+    def get_class_link(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            # Check if the user has already enrolled
+            user_enrollment = UserLiveClass.objects.filter(user=request.user, live_class=obj).first()
+            if user_enrollment and user_enrollment.status == 'Approved':
+                return obj.class_link
+            return None
+        return None
 
 class LiveClassSerializer(BaseLiveClassSerializer):
     class Meta(BaseLiveClassSerializer.Meta):
@@ -54,32 +75,20 @@ class LiveClassSerializer(BaseLiveClassSerializer):
         fields = [
             'id', 'name', 'batch_name', 'start_date', 'duration',
             'daily_start_time', 'daily_end_time', 'cover_image',
-            'short_description', 'medium', 'is_paid',
-            'can_enroll', 'has_enroll_limit_exceeded', 'has_already_enrolled', 'button_text'
+            'short_description', 'medium', 'is_paid', 'class_link',
+            'can_enroll', 'has_enroll_limit_exceeded', 'has_already_enrolled', 'button_text', 'user_live_class'
         ]
 
 
 class MyLiveClassSerializer(BaseLiveClassSerializer):
-    class_link = serializers.SerializerMethodField()
     class Meta(BaseLiveClassSerializer.Meta):
         model = LiveClass
         fields = [
             'id', 'name', 'batch_name', 'start_date', 'duration',
             'daily_start_time', 'daily_end_time', 'cover_image',
             'short_description', 'medium', 'is_paid', 'class_link',
-            'can_enroll', 'has_enroll_limit_exceeded', 'has_already_enrolled', 'button_text'
+            'can_enroll', 'has_enroll_limit_exceeded', 'has_already_enrolled', 'button_text', 'user_live_class'
         ]
-
-    def get_class_link(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            # Check if the user has already enrolled
-            user_enrollment = UserLiveClass.objects.filter(user=request.user, live_class=obj).first()
-            if user_enrollment and user_enrollment.status == 'Enrolled':
-                return None
-            return obj.class_link
-        return None
-
 
 class DetailedLiveClassSerializer(BaseLiveClassSerializer):
     class Meta(BaseLiveClassSerializer.Meta):
