@@ -4,11 +4,18 @@ from django.core.mail.backends.smtp import EmailBackend
 def send_email_with_dynamic_sender(subject, message, from_email, recipient_list, fail_silently=False):
     # Define your email settings for each sender email
     email_settings = {
-        "firstcode.in@tejasvaij.com": {
-            "EMAIL_HOST": 'smtp.hostinger.com',
+        "noreply@firstcode.in": {
+            "EMAIL_HOST": 'smtp.zoho.in',
             "EMAIL_PORT": 465,
-            "EMAIL_HOST_USER": 'firstcode.in@tejasvaij.com',
-            "EMAIL_HOST_PASSWORD": 'First@123',
+            "EMAIL_HOST_USER": 'noreply@firstcode.in',
+            "EMAIL_HOST_PASSWORD": 't2x_wdw~ekD_e_+',
+            "EMAIL_USE_SSL": True,
+        },
+        "updates@firstcode.in": {
+            "EMAIL_HOST": 'smtp.zoho.in',
+            "EMAIL_PORT": 465,
+            "EMAIL_HOST_USER": 'updates@firstcode.in',
+            "EMAIL_HOST_PASSWORD": 'u2x_wdw~ekD_e_+',
             "EMAIL_USE_SSL": True,
         },
     }

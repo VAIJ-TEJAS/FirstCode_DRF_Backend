@@ -8,7 +8,6 @@ from .models import (
     Track,
     Chapter,
     Lesson,
-    File,
     Task,
     UserCourse,
     UserChapter,
@@ -29,9 +28,9 @@ class TagSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class FileSerializer(serializers.ModelSerializer):
+class TaskSerializer(serializers.ModelSerializer):
     class Meta:
-        model = File
+        model = Task
         fields = "__all__"
 
 
@@ -50,7 +49,7 @@ class MyTaskSerializer(serializers.ModelSerializer):
         return serializer.data
 
 
-class OverviewLessonSerializer(serializers.ModelSerializer):
+class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
         fields = ["id", "name"]
@@ -72,7 +71,6 @@ class MyOverviewLessonSerializer(serializers.ModelSerializer):
 
 
 class MyDetailedLessonSerializer(serializers.ModelSerializer):
-    files = FileSerializer(many=True)
     tasks = MyTaskSerializer(many=True)
     user_lesson = serializers.SerializerMethodField()
     previous_lesson_id = serializers.SerializerMethodField()
@@ -111,7 +109,7 @@ class MyDetailedLessonSerializer(serializers.ModelSerializer):
 
 
 class ChapterSerializer(serializers.ModelSerializer):
-    lessons = OverviewLessonSerializer(many=True)
+    lessons = LessonSerializer(many=True)
 
     class Meta:
         model = Chapter
@@ -154,30 +152,6 @@ class MyTrackSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class UserCourseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserCourse
-        fields = "__all__"
-
-
-class UserChapterSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserChapter
-        fields = "__all__"
-
-
-class UserLessonSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserLesson
-        fields = "__all__"
-
-
-class UserTaskSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserTask
-        fields = "__all__"
-
-
 class BaseCourseSerializer(serializers.ModelSerializer):
     can_enroll = serializers.SerializerMethodField()
     has_enroll_limit_exceeded = serializers.SerializerMethodField()
@@ -185,7 +159,9 @@ class BaseCourseSerializer(serializers.ModelSerializer):
     can_start = serializers.SerializerMethodField()
     has_start_limit_exceeded = serializers.SerializerMethodField()
     has_already_started = serializers.SerializerMethodField()
+    has_completed = serializers.SerializerMethodField()
     button_text = serializers.SerializerMethodField()
+    user_course = serializers.SerializerMethodField()
 
     class Meta:
         abstract = True
@@ -248,48 +224,52 @@ class BaseCourseSerializer(serializers.ModelSerializer):
             ).exists()
         return False
 
+    def get_has_completed(self, obj):
+        """Check if the user has completed the course."""
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return UserCourse.objects.filter(
+                user=request.user, course=obj, status="Completed"
+            ).exists()
+        return False
+
     def get_button_text(self, obj):
+        if self.get_has_completed(obj):
+            return "Revisit"
         if self.get_has_start_limit_exceeded(obj):
-            return "Start Limit Exceeded" 
+            return "Start Limit Exceeded"
         if self.get_has_already_started(obj):
             return "Continue"
         if self.get_has_enroll_limit_exceeded(obj):
-            return "Enroll Limit Exceeded"  
+            return "Enroll Limit Exceeded"
         if self.get_can_start(obj):
             return "Start"
         if self.get_can_enroll(obj) and not self.get_has_already_enrolled(obj):
             return "Enroll"
-        return "Unavailable"
+        return "Upgrade Subcription"
 
-class OverviewCourseSerializer(BaseCourseSerializer):
-    tags = TagSerializer(many=True)
-    category = CategorySerializer()
+    def get_user_course(self, obj):
+        user_course = UserCourse.objects.filter(
+            course=obj, user=self.context["request"].user
+        ).first()
+        if user_course:
+            serializer = UserCourseSerializer(user_course)
+            return serializer.data
+        return None
 
+
+
+class CourseSerializer(BaseCourseSerializer):
     class Meta:
         model = Course
         fields = [
             "id",
-            "main_category",
-            "name",
-            "short_description",
-            "cover_image",
-            "is_paid",
-            "category",
-            "tags",
-            "can_enroll",
-            "has_enroll_limit_exceeded",
-            "has_already_enrolled",
-            "can_start",
-            "has_start_limit_exceeded",
-            "has_already_started",
-            "button_text"
+            "name"
         ]
 
-
-class MyOverviewCourseSerializer(BaseCourseSerializer):
+class OverviewCourseSerializer(BaseCourseSerializer):
     tags = TagSerializer(many=True)
     category = CategorySerializer()
-    user_course = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -309,17 +289,36 @@ class MyOverviewCourseSerializer(BaseCourseSerializer):
             "can_start",
             "has_start_limit_exceeded",
             "has_already_started",
+            "has_completed",
             "button_text"
         ]
 
-    def get_user_course(self, obj):
-        user_course = UserCourse.objects.filter(
-            course=obj, user=self.context["request"].user
-        ).first()
-        if user_course:
-            serializer = UserCourseSerializer(user_course)
-            return serializer.data
-        return None
+
+class MyOverviewCourseSerializer(BaseCourseSerializer):
+    tags = TagSerializer(many=True)
+    category = CategorySerializer()
+
+    class Meta:
+        model = Course
+        fields = [
+            "id",
+            "user_course",
+            "main_category",
+            "name",
+            "short_description",
+            "cover_image",
+            "is_paid",
+            "category",
+            "tags",
+            "can_enroll",
+            "has_enroll_limit_exceeded",
+            "has_already_enrolled",
+            "can_start",
+            "has_start_limit_exceeded",
+            "has_already_started",
+            "has_completed",
+            "button_text"
+        ]
 
 
 class DetailedCourseSerializer(BaseCourseSerializer):
@@ -336,17 +335,36 @@ class MyDetailedCourseSerializer(BaseCourseSerializer):
     tags = TagSerializer(many=True)
     category = CategorySerializer()
     tracks = MyTrackSerializer(many=True, read_only=True)
-    user_course = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = "__all__"
 
-    def get_user_course(self, obj):
-        user_course = UserCourse.objects.filter(
-            course=obj, user=self.context["request"].user
-        ).first()
-        if user_course:
-            serializer = UserCourseSerializer(user_course)
-            return serializer.data
-        return None
+
+
+class UserCourseSerializer(serializers.ModelSerializer):
+    course = CourseSerializer()
+    class Meta:
+        model = UserCourse
+        fields = "__all__"
+
+
+class UserChapterSerializer(serializers.ModelSerializer):
+    chapter = ChapterSerializer()
+    class Meta:
+        model = UserChapter
+        fields = "__all__"
+
+
+class UserLessonSerializer(serializers.ModelSerializer):
+    lesson = LessonSerializer()
+    class Meta:
+        model = UserLesson
+        fields = "__all__"
+
+
+class UserTaskSerializer(serializers.ModelSerializer):
+    task = TaskSerializer()
+    class Meta:
+        model = UserTask
+        fields = "__all__"

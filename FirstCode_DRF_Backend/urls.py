@@ -10,6 +10,7 @@ from liveclass import views as liveclass_views
 from otp.views import GenerateOTPLogin, GenerateOTPRegister, PasswordResetConfirm, SendPasswordResetLink, VerifyOTPLogin, VerifyOTPRegister
 from subscription import views as subscription_views
 from user import views as user_views
+from quote import views as quote_views
 
 # Initialize the router
 router = DefaultRouter()
@@ -21,6 +22,7 @@ router.register(r'my-courses', course_views.MyCourseViewSet, basename='my-course
 router.register(r'my-lessons', course_views.MyLessonViewSet, basename='lessons')
 router.register(r'user-courses', course_views.UserCourseViewSet, basename='user-courses')
 router.register(r'user-tasks', course_views.UserTaskViewSet, basename='user-tasks')
+router.register(r'user-course-certificates', course_views.UserCourseCertificateViewSet, basename='user-course-certificates')
 
 # Registering viewsets from the liveclass app
 router.register(r'liveclasses', liveclass_views.LiveClassViewSet, basename='liveclasses')
@@ -37,6 +39,7 @@ router.register(r'update-name', user_views.UserNameUpdateViewSet, basename='upda
 router.register(r'delete-account', user_views.UserDeleteViewSet, basename='delete-account')
 router.register(r'learning-progress', user_views.LearningProgressGraphViewSet, basename='learning-progress')
 router.register(r'monthly-progress', user_views.MonthlyProgressViewSet, basename='monthly-progress')
+router.register(r'streak', user_views.StreakViewSet, basename='streak')
 router.register(r'piechart-stats', user_views.PieChartViewSet, basename='piechart-stats')
 router.register(r'events-stats', user_views.EventViewSet, basename='events-stats')
 router.register(r'leftcourses-stats', user_views.LeftCoursesViewSet, basename='leftcourses-stats')
@@ -56,4 +59,6 @@ urlpatterns = [
     path('verify-otp-login/', VerifyOTPLogin.as_view(), name='verify-otp-login'),
     path('reset_password_confirm/', SendPasswordResetLink.as_view(), name='reset_password_confirm'),
     path('reset-password-confirmed/', PasswordResetConfirm.as_view(), name='reset-password-confirmed'),
+    path('personalised-quote/', quote_views.RandomPersonalisedQuoteView.as_view(), name='personalised-quote'),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

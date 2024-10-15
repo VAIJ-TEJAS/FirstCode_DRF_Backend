@@ -1,5 +1,4 @@
 from django.db import models
-from django.utils import timezone
 from django.contrib.auth.models import User
 from user.models import Pattern
 
@@ -81,14 +80,6 @@ class Lesson(models.Model):
         return self.name
 
 
-class File(models.Model):
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='files')
-    file = models.FileField(upload_to="lesson_files/")
-
-    def __str__(self):
-        return f"File for {self.lesson.name}"
-
-
 class Task(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='tasks')
     name = models.CharField(max_length=255)
@@ -109,6 +100,7 @@ class UserCourse(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     certificate_id = models.CharField(max_length=255, blank=True, null=True)
+    certificate = models.FileField(upload_to='certificates/', blank=True, null=True)
     completed_chapters = models.IntegerField(default=0)
     progress = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES) 
