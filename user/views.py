@@ -494,18 +494,16 @@ class StreakViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
     def list(self, request, *args, **kwargs):
         user = request.user
         today = timezone.now().date()
+        
+        # Initialize streak counters and date ranges
         streak = 0
         longest_streak = 0
         current_streak = 0
 
-        # Initialize date ranges
         current_streak_start = None
         current_streak_end = None
         longest_streak_start = None
         longest_streak_end = None
-
-        # Set today's date as the starting point for the streak check
-        day = today
 
         # Get all lessons completed by the user, ordered by date
         completed_lessons_by_day = UserLesson.objects.filter(
@@ -522,32 +520,41 @@ class StreakViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
             }, status=status.HTTP_200_OK)
 
         # Track consecutive streak dates
-        current_streak_end = today
-        while True:
-            completed_lessons = UserLesson.objects.filter(
-                user=user, last_modified__date=day, status="Completed"
-            ).count()
+        previous_day = None
+        longest_streak_temp = 0
+        current_streak_tracking = True
 
-            if completed_lessons > 0:
-                if current_streak == 0:
-                    current_streak_end = day
-                current_streak_start = day
-                current_streak += 1
-                streak += 1
-                # Check if current streak exceeds the longest streak
-                if current_streak > longest_streak:
-                    longest_streak = current_streak
-                    longest_streak_start = current_streak_start
-                    longest_streak_end = current_streak_end
+        # Loop through each completed lesson date and check for consecutive days
+        for lesson in completed_lessons_by_day:
+            completed_day = lesson.last_modified.date()
+
+            # If it's the first iteration or consecutive day, increase streak counters
+            if previous_day is None or (previous_day - timedelta(days=1)) == completed_day:
+                longest_streak_temp += 1
+
+                # Check for the longest streak update
+                if longest_streak_temp > longest_streak:
+                    longest_streak = longest_streak_temp
+                    longest_streak_start = completed_day
+                    longest_streak_end = previous_day if previous_day else completed_day
+
+                # Track the current streak if within the latest consecutive days
+                if current_streak_tracking:
+                    if current_streak == 0:
+                        current_streak_end = completed_day
+                    current_streak_start = completed_day
+                    current_streak += 1
+                    streak += 1
             else:
-                current_streak = 0  # Reset streak count if no completed lessons
+                # Reset the temp counter for the longest streak
+                longest_streak_temp = 1
 
-            day = day - timedelta(days=1)
+                # Stop tracking current streak if break in consecutive days
+                if current_streak_tracking:
+                    current_streak_tracking = False
 
-            if not UserLesson.objects.filter(
-                user=user, last_modified__date=day, status="Completed"
-            ).exists():
-                break
+            # Update previous day
+            previous_day = completed_day
 
         # Format dates as "Oct 2 - Oct 11"
         def format_date_range(start_date, end_date):
@@ -558,8 +565,9 @@ class StreakViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
         streak_data = {
             "current_streak": streak,
             "current_streak_dates": format_date_range(current_streak_start, current_streak_end),
-            "longest_streak": longest_streak,
+            "longest_streak": longest_streak + 1,
             "longest_streak_dates": format_date_range(longest_streak_start, longest_streak_end),
         }
 
         return Response(streak_data, status=status.HTTP_200_OK)
+

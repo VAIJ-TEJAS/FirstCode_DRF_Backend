@@ -197,6 +197,41 @@ class UserCourseViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"], url_path="startover", url_name="startover")
+    @transaction.atomic
+    def startover(self, request, pk=None):
+        # Get the UserCourse instance
+        user_course = get_object_or_404(UserCourse, pk=pk, user=request.user)
+
+        # Check if the course has already been started
+        if user_course.status == 'Enrolled':
+            return Response(
+                {"detail": "Cannot start over a course that hasn't been started yet."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Delete related UserChapter, UserLesson, and UserTask for this user and course
+        # Get all chapters for the current user in the course's tracks
+        user_chapters = UserChapter.objects.filter(chapter__track__course=user_course.course, user=request.user)
+        user_lessons = UserLesson.objects.filter(lesson__chapter__track__course=user_course.course, user=request.user)
+        user_tasks = UserTask.objects.filter(task__lesson__chapter__track__course=user_course.course, user=request.user)
+
+        # Delete them
+        user_chapters.delete()
+        user_lessons.delete()
+        user_tasks.delete()
+
+        # Optionally reset UserCourse progress, completed chapters, etc.
+        user_course.completed_chapters = 0
+        user_course.progress = 0.0
+        user_course.status = 'Enrolled'  # Reset status to 'Enrolled'
+        user_course.save()
+
+        return Response(
+            {"detail": "Successfully started the course over."},
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=True, methods=["delete"], url_path="unenroll", url_name="unenroll")
     @transaction.atomic
     def unenroll(self, request, pk=None):
