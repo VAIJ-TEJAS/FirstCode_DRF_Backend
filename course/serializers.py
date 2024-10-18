@@ -70,7 +70,16 @@ class MyOverviewLessonSerializer(serializers.ModelSerializer):
         return serializer.data
 
 
+class ChapterSerializer(serializers.ModelSerializer):
+    lessons = LessonSerializer(many=True)
+
+    class Meta:
+        model = Chapter
+        fields = "__all__"
+
+
 class MyDetailedLessonSerializer(serializers.ModelSerializer):
+    chapter = ChapterSerializer()
     tasks = MyTaskSerializer(many=True)
     user_lesson = serializers.SerializerMethodField()
     previous_lesson_id = serializers.SerializerMethodField()
@@ -92,28 +101,48 @@ class MyDetailedLessonSerializer(serializers.ModelSerializer):
         chapter_lessons = Lesson.objects.filter(chapter=obj.chapter).order_by('id')
         # Get the current lesson's index in the chapter
         current_index = list(chapter_lessons).index(obj)
-        # Find the previous lesson, if it exists
+
+        # Find the previous lesson within the current chapter
         if current_index > 0:
             return chapter_lessons[current_index - 1].id
-        return None  # No previous lesson
+
+        # If no previous lesson in the current chapter, look for the previous chapter
+        track_chapters = Chapter.objects.filter(track=obj.chapter.track).order_by('id')
+        current_chapter_index = list(track_chapters).index(obj.chapter)
+
+        # Check if there is a previous chapter in the track
+        if current_chapter_index > 0:
+            previous_chapter = track_chapters[current_chapter_index - 1]
+            # Fetch the last lesson from the previous chapter, if it exists
+            previous_chapter_lessons = Lesson.objects.filter(chapter=previous_chapter).order_by('-id')
+            if previous_chapter_lessons.exists():
+                return previous_chapter_lessons.first().id
+
+        return None  # No previous lesson or chapter available
 
     def get_next_lesson_id(self, obj):
         # Fetch the lessons for the current chapter
         chapter_lessons = Lesson.objects.filter(chapter=obj.chapter).order_by('id')
         # Get the current lesson's index in the chapter
         current_index = list(chapter_lessons).index(obj)
-        # Find the next lesson, if it exists
+
+        # Find the next lesson within the current chapter
         if current_index < len(chapter_lessons) - 1:
             return chapter_lessons[current_index + 1].id
-        return None  # No next lesson
 
+        # If no next lesson in the current chapter, look for the next chapter
+        track_chapters = Chapter.objects.filter(track=obj.chapter.track).order_by('id')
+        current_chapter_index = list(track_chapters).index(obj.chapter)
 
-class ChapterSerializer(serializers.ModelSerializer):
-    lessons = LessonSerializer(many=True)
-
-    class Meta:
-        model = Chapter
-        fields = "__all__"
+        # Check if there is a next chapter in the track
+        if current_chapter_index < len(track_chapters) - 1:
+            next_chapter = track_chapters[current_chapter_index + 1]
+            # Fetch the first lesson from the next chapter, if it exists
+            next_chapter_lessons = Lesson.objects.filter(chapter=next_chapter).order_by('id')
+            if next_chapter_lessons.exists():
+                return next_chapter_lessons.first().id
+        
+        return None
 
 
 class MyChapterSerializer(serializers.ModelSerializer):
@@ -339,7 +368,6 @@ class MyDetailedCourseSerializer(BaseCourseSerializer):
     class Meta:
         model = Course
         fields = "__all__"
-
 
 
 class UserCourseSerializer(serializers.ModelSerializer):
