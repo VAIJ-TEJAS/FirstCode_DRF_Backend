@@ -13,7 +13,7 @@ from course.serializers import (
 )
 from liveclass.models import LiveClass, UserLiveClass
 from liveclass.serializers import LiveClassSerializer, UserLiveClassSerializer
-from subscription.models import UserSubscription
+from subscription.models import Subscription, UserSubscription
 from .models import Pattern, UserProfile
 from itertools import chain
 from operator import attrgetter
@@ -135,6 +135,36 @@ def google_complete(request):
 
         # Create a token for your DRF TokenAuthentication
         token, created = Token.objects.get_or_create(user=user)
+
+        # Fetch the subscription with level 0
+        try:
+            default_subscription = Subscription.objects.get(level=0)
+        except Subscription.DoesNotExist:
+            return Response(
+                {"error": "Default subscription not found"},
+                status=500,
+            )
+
+        # Assign the subscription to the user
+        UserSubscription.objects.get_or_create(
+            user=user,
+            subscription=default_subscription,
+            subscription_start_date=timezone.now(),
+            subscription_end_date=timezone.now() + timedelta(days=default_subscription.validity),
+            status="Current",
+        )
+
+        # Assign the Pattern with code 'VIZ'
+        try:
+            default_pattern = Pattern.objects.get(code="VIZ")
+        except Pattern.DoesNotExist:
+            return Response(
+                {"error": "Default pattern not found"},
+                status=500,
+            )
+
+        # Create UserProfile for the user with the default pattern
+        UserProfile.objects.get_or_create(user=user, current_subscription=default_subscription, pattern=default_pattern)
 
         # Serialize the user object
         user_serializer = UserSerializer(token.user)
