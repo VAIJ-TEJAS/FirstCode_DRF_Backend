@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
+from otp.tasks import send_welcome_email
 from subscription.models import Subscription, UserSubscription
 from user.models import User, UserProfile, Pattern
 from user.serializers import UserSerializer
@@ -230,6 +231,9 @@ class VerifyOTPRegister(APIView):
 
             # Create UserProfile for the user
             UserProfile.objects.create(user=user, current_subscription=new_subscription, pattern=default_pattern)
+
+             # Send welcome email asynchronously using Celery
+            send_welcome_email.delay(email, user.username)
 
             return Response(
                 {"token": token.key, "user": user_serializer.data},
