@@ -343,17 +343,10 @@ class CurrentUserViewSet(viewsets.ViewSet):
         
         # Create or fetch token
         old_token, created = Token.objects.get_or_create(user=user)
-        
-        # If the token already exists, delete it and create a new one
-        if not created:
-            old_token.delete()
-            new_token = Token.objects.create(user=user)
-        else:
-            new_token = old_token  # Use the newly created token if it was created
 
         return Response(
             {
-                "token": new_token.key,
+                "token": old_token.key,
                 "user": user_serializer.data,
             },
             status=status.HTTP_200_OK,
