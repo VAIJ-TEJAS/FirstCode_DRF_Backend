@@ -334,9 +334,7 @@ class PasswordResetConfirm(APIView):
             {"message": "Password reset successfully."}, status=status.HTTP_200_OK
         )
 
-class CurrentUserViewSet(viewsets.ViewSet):
-    permission_classes = [IsAuthenticated]
-
+class CurrentUserViewSet(APIView):
     def get(self, request, *args, **kwargs):
         user = request.user
         user_serializer = UserSerializer(user)
