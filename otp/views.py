@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
 from subscription.models import Subscription, UserSubscription
-from user.models import User, UserProfile
+from user.models import User, UserProfile, Pattern
 from user.serializers import UserSerializer
 from utils.email_dynamic_sender import send_email_with_dynamic_sender
 from .models import OTP, PasswordResetToken
@@ -219,8 +219,17 @@ class VerifyOTPRegister(APIView):
                 status="Current",
             )
 
+            # Assign the Pattern with code 'VIZ'
+            try:
+                default_pattern = Pattern.objects.get(code="VIZ")
+            except Pattern.DoesNotExist:
+                return Response(
+                    {"error": "Default pattern not found"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
             # Create UserProfile for the user
-            UserProfile.objects.create(user=user, current_subscription=new_subscription)
+            UserProfile.objects.create(user=user, current_subscription=new_subscription, pattern=default_pattern)
 
             return Response(
                 {"token": token.key, "user": user_serializer.data},
