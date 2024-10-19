@@ -337,7 +337,7 @@ class PasswordResetConfirm(APIView):
 class CurrentUserViewSet(APIView):
     permission_classes = [IsAuthenticated] 
 
-    def post(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         user = request.user  
         user_serializer = UserSerializer(user)  
         
