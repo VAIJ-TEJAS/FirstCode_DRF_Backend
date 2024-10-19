@@ -24,8 +24,18 @@ class ListSubscriptionViewSet(viewsets.ModelViewSet):
     http_method_names = ["get"]
 
     def get_queryset(self):
-        # Exclude subscriptions with level 0
-        return Subscription.objects.filter(level__gt=0)
+        # Get the user from the request
+        user = self.request.user
+        
+        # Get the user's profile and current subscription
+        user_profile = UserProfile.objects.get(user=user)
+        current_subscription = user_profile.current_subscription
+
+        # Get the level of the user's current subscription
+        current_level = current_subscription.subscription.level if current_subscription else 0
+        
+        # Filter subscriptions where level is greater than the user's current subscription level
+        return Subscription.objects.filter(level__gt=current_level)
 
 
 class UserSubscriptionViewSet(viewsets.ModelViewSet):
@@ -159,19 +169,12 @@ class PaymentWebhookViewSet(viewsets.ViewSet):
         today = timezone.now().date()
         user_profile, _ = UserProfile.objects.get_or_create(user=user)
         current_subscription = user_profile.current_subscription
-
-        # Determine start date and handle existing subscription if necessary
+        
+        start_date = timezone.make_aware(datetime.combine(today, datetime.min.time()))
+        # If the user already has a current subscription, mark it as expired
         if current_subscription:
-            start_date = timezone.make_aware(
-                datetime.combine(
-                    current_subscription.subscription_end_date + timedelta(days=1),
-                    datetime.min.time(),
-                )
-            )
             current_subscription.status = "Expired"
             current_subscription.save()
-        else:
-            start_date = timezone.make_aware(datetime.combine(today, datetime.min.time()))
 
         # Calculate end date based on the subscription validity
         end_date = start_date + timedelta(days=subscription.validity)
@@ -192,6 +195,7 @@ class PaymentWebhookViewSet(viewsets.ViewSet):
 
         serializer = UserSubscriptionSerializer(user_subscription)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
     def renew_subscription(self, user, subscription_id, payment_data):
         subscription = Subscription.objects.get(id=subscription_id)
