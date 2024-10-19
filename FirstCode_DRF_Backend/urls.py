@@ -23,6 +23,7 @@ router.register(r'my-lessons', course_views.MyLessonViewSet, basename='lessons')
 router.register(r'user-courses', course_views.UserCourseViewSet, basename='user-courses')
 router.register(r'user-tasks', course_views.UserTaskViewSet, basename='user-tasks')
 router.register(r'user-course-certificates', course_views.UserCourseCertificateViewSet, basename='user-course-certificates')
+router.register(r'inactive-courses', course_views.InactiveCoursesViewSet, basename='inactive-courses')
 
 # Registering viewsets from the liveclass app
 router.register(r'liveclasses', liveclass_views.LiveClassViewSet, basename='liveclasses')
