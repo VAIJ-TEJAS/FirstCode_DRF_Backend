@@ -44,7 +44,6 @@ router.register(r'piechart-stats', user_views.PieChartViewSet, basename='piechar
 router.register(r'events-stats', user_views.EventViewSet, basename='events-stats')
 router.register(r'leftcourses-stats', user_views.LeftCoursesViewSet, basename='leftcourses-stats')
 router.register(r'latest-courses-classes', user_views.LatestCoursesAndClassesViewSet, basename='latest-courses-classes')
-router.register(r'current-user', CurrentUserViewSet, basename='current-user')
 
 # Register the PaymentWebhookViewSet
 router.register(r'webhook', subscription_views.PaymentWebhookViewSet, basename='payment-webhook')
@@ -61,5 +60,6 @@ urlpatterns = [
     path('reset_password_confirm/', SendPasswordResetLink.as_view(), name='reset_password_confirm'),
     path('reset-password-confirmed/', PasswordResetConfirm.as_view(), name='reset-password-confirmed'),
     path('personalised-quote/', quote_views.RandomPersonalisedQuoteView.as_view(), name='personalised-quote'),
+    path('current-user/', CurrentUserViewSet.as_view(), name='current-user'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
