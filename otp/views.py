@@ -1,8 +1,7 @@
 from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import get_random_string
-from django.urls import reverse
-from django.conf import settings
+from rest_framework import viewsets
 from django.utils.timezone import now, timedelta
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
@@ -277,14 +276,14 @@ class VerifyOTPLogin(APIView):
         # Create or fetch token
         old_token = Token.objects.get(user=user)
         # Delete the old token and create a new one
-        # old_token.delete()
-        # new_token = Token.objects.create(user=user)
+        old_token.delete()
+        new_token = Token.objects.create(user=user)
 
         # Serialize the user object
         user_serializer = UserSerializer(user)
 
         return Response(
-            {"token": old_token.key, "user": user_serializer.data},
+            {"token": new_token.key, "user": user_serializer.data},
             status=status.HTTP_200_OK,
         )
 
@@ -332,4 +331,21 @@ class PasswordResetConfirm(APIView):
 
         return Response(
             {"message": "Password reset successfully."}, status=status.HTTP_200_OK
+        )
+
+class CurrentUserViewSet(viewsets.ViewSet):
+
+    def retrieve(self, request, *args, **kwargs):
+        user = request.user  # Get the authenticated user
+        user_serializer = UserSerializer(user)  # Serialize the user object
+        
+        # Create or fetch token
+        old_token = Token.objects.get(user=user)
+        # Delete the old token and create a new one
+        old_token.delete()
+        new_token = Token.objects.create(user=user)
+
+        return Response(
+            {"token": new_token.key, "user": user_serializer.data},
+            status=status.HTTP_200_OK,
         )
