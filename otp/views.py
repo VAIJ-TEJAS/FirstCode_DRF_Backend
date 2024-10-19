@@ -334,12 +334,12 @@ class PasswordResetConfirm(APIView):
             {"message": "Password reset successfully."}, status=status.HTTP_200_OK
         )
 
-class CurrentUserViewSet(APIView):
-    permission_classes = [IsAuthenticated] 
+class CurrentUserViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        user = request.user  
-        user_serializer = UserSerializer(user)  
+        user = request.user
+        user_serializer = UserSerializer(user)
         
         # Create or fetch token
         old_token, created = Token.objects.get_or_create(user=user)
@@ -351,11 +351,10 @@ class CurrentUserViewSet(APIView):
         else:
             new_token = old_token  # Use the newly created token if it was created
 
-        # Prepare the response as a dictionary
         return Response(
             {
-                "token": new_token.key,  # Return the token
-                "user": user_serializer.data,  # Return the serialized user data
+                "token": new_token.key,
+                "user": user_serializer.data,
             },
             status=status.HTTP_200_OK,
         )
