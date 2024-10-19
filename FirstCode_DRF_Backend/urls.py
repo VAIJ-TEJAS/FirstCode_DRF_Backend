@@ -7,7 +7,7 @@ from rest_framework.routers import DefaultRouter
 # Importing views with aliases
 from course import views as course_views
 from liveclass import views as liveclass_views
-from otp.views import GenerateOTPLogin, GenerateOTPRegister, PasswordResetConfirm, SendPasswordResetLink, VerifyOTPLogin, VerifyOTPRegister
+from otp.views import GenerateOTPLogin, GenerateOTPRegister, PasswordResetConfirm, SendPasswordResetLink, VerifyOTPLogin, VerifyOTPRegister, CurrentUserViewSet
 from subscription import views as subscription_views
 from user import views as user_views
 from quote import views as quote_views
@@ -23,6 +23,7 @@ router.register(r'my-lessons', course_views.MyLessonViewSet, basename='lessons')
 router.register(r'user-courses', course_views.UserCourseViewSet, basename='user-courses')
 router.register(r'user-tasks', course_views.UserTaskViewSet, basename='user-tasks')
 router.register(r'user-course-certificates', course_views.UserCourseCertificateViewSet, basename='user-course-certificates')
+router.register(r'current-user', CurrentUserViewSet, basename='current-user')
 
 # Registering viewsets from the liveclass app
 router.register(r'liveclasses', liveclass_views.LiveClassViewSet, basename='liveclasses')

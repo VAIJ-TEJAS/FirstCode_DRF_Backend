@@ -164,6 +164,7 @@ class PaymentWebhookViewSet(viewsets.ViewSet):
 
         return response
 
+
     def create_new_subscription(self, user, subscription_id, payment_data):
         subscription = Subscription.objects.get(id=subscription_id)
         today = timezone.now().date()
