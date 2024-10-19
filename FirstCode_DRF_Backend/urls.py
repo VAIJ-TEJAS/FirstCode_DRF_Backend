@@ -23,7 +23,6 @@ router.register(r'my-lessons', course_views.MyLessonViewSet, basename='lessons')
 router.register(r'user-courses', course_views.UserCourseViewSet, basename='user-courses')
 router.register(r'user-tasks', course_views.UserTaskViewSet, basename='user-tasks')
 router.register(r'user-course-certificates', course_views.UserCourseCertificateViewSet, basename='user-course-certificates')
-router.register(r'current-user', CurrentUserViewSet, basename='current-user')
 
 # Registering viewsets from the liveclass app
 router.register(r'liveclasses', liveclass_views.LiveClassViewSet, basename='liveclasses')
@@ -35,6 +34,7 @@ router.register(r'list-subscriptions', subscription_views.ListSubscriptionViewSe
 router.register(r'subscription', subscription_views.UserSubscriptionViewSet, basename='subscription')
 
 # Registering viewsets from the user app
+router.register(r'current-user', CurrentUserViewSet, basename='current-user')
 router.register(r'assign-pattern', user_views.PatternAssignmentViewSet, basename='assign-pattern')
 router.register(r'update-name', user_views.UserNameUpdateViewSet, basename='update-name')
 router.register(r'delete-account', user_views.UserDeleteViewSet, basename='delete-account')

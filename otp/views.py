@@ -333,17 +333,27 @@ class PasswordResetConfirm(APIView):
             {"message": "Password reset successfully."}, status=status.HTTP_200_OK
         )
 
-class CurrentUserViewSet(viewsets.ViewSet):
+class CurrentUserViewSet(viewsets.ModelViewSet):
+    serializer_class = UserSerializer
+    http_method_names = ['get']  # Allow only GET requests
+
+    def get_queryset(self):
+        # Return a queryset containing only the current user
+        return [self.request.user]  # Return a list with the current user
 
     def retrieve(self, request, *args, **kwargs):
-        user = request.user  # Get the authenticated user
-        user_serializer = UserSerializer(user)  # Serialize the user object
+        user = self.get_queryset()[0]  # Get the authenticated user
+        user_serializer = self.get_serializer(user)  # Serialize the user object
         
         # Create or fetch token
-        old_token = Token.objects.get(user=user)
-        # Delete the old token and create a new one
-        old_token.delete()
-        new_token = Token.objects.create(user=user)
+        old_token, created = Token.objects.get_or_create(user=user)
+        
+        # If the token already exists, delete it and create a new one
+        if not created:
+            old_token.delete()
+            new_token = Token.objects.create(user=user)
+        else:
+            new_token = old_token  # Use the newly created token if it was created
 
         return Response(
             {"token": new_token.key, "user": user_serializer.data},
