@@ -84,6 +84,7 @@ class MyDetailedLessonSerializer(serializers.ModelSerializer):
     user_lesson = serializers.SerializerMethodField()
     previous_lesson_id = serializers.SerializerMethodField()
     next_lesson_id = serializers.SerializerMethodField()
+    course = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
@@ -143,6 +144,12 @@ class MyDetailedLessonSerializer(serializers.ModelSerializer):
                 return next_chapter_lessons.first().id
         
         return None
+    
+    def get_course(self, obj):
+        # Assuming each chapter has a foreign key to a course
+        course = obj.chapter.track.course  # Adjust this based on your actual model relationships
+        return CourseSerializer(course).data if course else None
+
 
 
 class MyChapterSerializer(serializers.ModelSerializer):

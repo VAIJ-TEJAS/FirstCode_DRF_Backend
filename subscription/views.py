@@ -18,7 +18,6 @@ import json
 
 client = razorpay.Client(auth=(os.getenv("KEY_ID"), os.getenv("KEY_SECRET")))
 
-
 class ListSubscriptionViewSet(viewsets.ModelViewSet):
     serializer_class = SubscriptionSerializer
     http_method_names = ["get"]

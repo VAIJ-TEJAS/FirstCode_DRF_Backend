@@ -13,6 +13,7 @@ from course.serializers import (
 )
 from liveclass.models import LiveClass, UserLiveClass
 from liveclass.serializers import LiveClassSerializer, UserLiveClassSerializer
+from otp.tasks import send_welcome_email
 from subscription.models import Subscription, UserSubscription
 from .models import Pattern, UserProfile
 from itertools import chain
@@ -130,6 +131,9 @@ def google_complete(request):
             user.set_unusable_password()  # Important if password login isn't meant to be used
             user.save()
 
+            # Send welcome email asynchronously using Celery
+            send_welcome_email.delay(email, first_name)
+
         # Authenticate session
         login(request, user)
 
@@ -150,7 +154,8 @@ def google_complete(request):
             user=user,
             subscription=default_subscription,
             subscription_start_date=timezone.now(),
-            subscription_end_date=timezone.now() + timedelta(days=default_subscription.validity),
+            subscription_end_date=timezone.now()
+            + timedelta(days=default_subscription.validity),
             status="Current",
         )
 
@@ -164,13 +169,17 @@ def google_complete(request):
             )
 
         # Create UserProfile for the user with the default pattern
-        UserProfile.objects.get_or_create(user=user, current_subscription=default_subscription, pattern=default_pattern)
+        UserProfile.objects.get_or_create(
+            user=user,
+            current_subscription=default_subscription,
+            pattern=default_pattern,
+        )
 
         # Serialize the user object
         user_serializer = UserSerializer(token.user)
         serialized_user = user_serializer.data
 
-        return Response({"token": token.key, "user": serialized_user})
+        return Response({"token": token.key, "user": serialized_user, "signup": created})
 
     except ValueError:
         # Invalid token
@@ -233,9 +242,7 @@ class UserDeleteViewSet(viewsets.ModelViewSet):
         )
 
 
-class PatternAssignmentViewSet(
-    viewsets.GenericViewSet, viewsets.mixins.CreateModelMixin
-):
+class PatternAssignmentViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
     http_method_names = ["post"]
@@ -453,7 +460,9 @@ class EventViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
             elif isinstance(event, UserLesson):
                 serialized_data = UserLessonSerializer(event).data
                 serialized_data["type"] = "lesson"
-                serialized_data["description"] = f"{event.lesson.name} in chapter {event.lesson.chapter.name}"
+                serialized_data["description"] = (
+                    f"{event.lesson.name} in chapter {event.lesson.chapter.name}"
+                )
             elif isinstance(event, UserTask):
                 serialized_data = UserTaskSerializer(event).data
                 serialized_data["type"] = "task"
@@ -461,7 +470,9 @@ class EventViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
             elif isinstance(event, UserLiveClass):
                 serialized_data = UserLiveClassSerializer(event).data
                 serialized_data["type"] = "live_class"
-                serialized_data["description"] = f"Attended live class - {event.live_class.name}"
+                serialized_data["description"] = (
+                    f"Attended live class - {event.live_class.name}"
+                )
 
             serialized_events.append(serialized_data)
 
@@ -524,7 +535,7 @@ class StreakViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
     def list(self, request, *args, **kwargs):
         user = request.user
         today = timezone.now().date()
-        
+
         # Initialize streak counters and date ranges
         streak = 0
         longest_streak = 0
@@ -542,12 +553,15 @@ class StreakViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
 
         if not completed_lessons_by_day.exists():
             # No completed lessons, return streak of 0 and no date range
-            return Response({
-                "current_streak": 0,
-                "current_streak_dates": None,
-                "longest_streak": 0,
-                "longest_streak_dates": None
-            }, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    "current_streak": 0,
+                    "current_streak_dates": None,
+                    "longest_streak": 0,
+                    "longest_streak_dates": None,
+                },
+                status=status.HTTP_200_OK,
+            )
 
         # Track consecutive streak dates
         previous_day = None
@@ -559,7 +573,10 @@ class StreakViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
             completed_day = lesson.last_modified.date()
 
             # If it's the first iteration or consecutive day, increase streak counters
-            if previous_day is None or (previous_day - timedelta(days=1)) == completed_day:
+            if (
+                previous_day is None
+                or (previous_day - timedelta(days=1)) == completed_day
+            ):
                 longest_streak_temp += 1
 
                 # Check for the longest streak update
@@ -594,10 +611,13 @@ class StreakViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
 
         streak_data = {
             "current_streak": streak,
-            "current_streak_dates": format_date_range(current_streak_start, current_streak_end),
-            "longest_streak": longest_streak + 1,
-            "longest_streak_dates": format_date_range(longest_streak_start, longest_streak_end),
+            "current_streak_dates": format_date_range(
+                current_streak_start, current_streak_end
+            ),
+            "longest_streak": longest_streak,
+            "longest_streak_dates": format_date_range(
+                longest_streak_start, longest_streak_end
+            ),
         }
 
         return Response(streak_data, status=status.HTTP_200_OK)
-

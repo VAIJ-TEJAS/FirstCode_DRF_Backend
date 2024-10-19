@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from celery.schedules import crontab
 
 load_dotenv()
 
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     'nested_admin',
+    'ckeditor',
     
     'course',
     'liveclass',
@@ -152,3 +154,21 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = "/media/"
+
+# Redis as the broker for Celery
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BEAT_SCHEDULE = {
+    'update-subscriptions-every-day': {
+        'task': 'subscriptions.tasks.update_subscriptions',
+        'schedule': crontab(hour=0, minute=0),  # Run daily at midnight
+    },
+    'notify-users-about-subscription-expiration': {
+        'task': 'subscriptions.tasks.notify_users_about_subscription_expiration',
+        'schedule': crontab(hour=8, minute=0),  # Run daily at 8 AM
+    },
+    'check-inactive-courses-every-day': {
+        'task': 'course.tasks.check_and_reset_inactive_courses',
+        'schedule': crontab(hour=0, minute=0),  # Every day at midnight
+    },
+}

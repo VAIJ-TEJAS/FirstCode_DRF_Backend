@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from user.models import Pattern
-
+from ckeditor.fields import RichTextField
 
 class Category(models.Model):
     name = models.CharField(max_length=255)
@@ -72,6 +72,7 @@ class Lesson(models.Model):
     requirements = models.TextField()
     video_url = models.URLField(blank=True, null=True)
     blog_link = models.URLField(blank=True, null=True)
+    html_content = models.TextField(blank=True, null=True)
     playground_type = models.CharField(max_length=50, choices=PLAYGROUND_TYPE_CHOICES)
     quote = models.CharField(max_length=255, blank=True, null=True)
     iframe_url = models.URLField(blank=True, null=True)
