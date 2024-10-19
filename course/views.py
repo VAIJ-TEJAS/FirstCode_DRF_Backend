@@ -1,6 +1,7 @@
 import uuid
 from django.template.loader import render_to_string
 from weasyprint import HTML
+from django.utils import timezone
 from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
 from django.db import transaction
@@ -400,3 +401,38 @@ class UserTaskViewSet(viewsets.ModelViewSet):
         # Serialize and return the created or updated UserTask instance
         serializer = self.get_serializer(user_task)  # Extracting the first element of the tuple
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class InactiveCoursesViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin):
+    http_method_names = ["get"]
+
+    def list(self, request, *args, **kwargs):
+        user = request.user
+        today = timezone.now().date()
+
+        # Query for courses where user has not completed any task recently
+        inactive_courses = UserCourse.objects.filter(user=user)
+
+        # Build the response data
+        response_data = []
+        
+        for user_course in inactive_courses:
+            # Get the last completed task for this course
+            last_task = UserTask.objects.filter(
+                user=user,
+                task__lesson__chapter__track__course=user_course.course,
+            ).order_by('-last_modified').first()
+
+            if last_task:
+                # Calculate how many days ago the last task was completed
+                days_since_last_task = (today - last_task.last_modified.date()).days
+            else:
+                # If no task was ever completed, set a default (e.g., None or large value)
+                days_since_last_task = None
+
+            # Add the course and days since last task to the response
+            response_data.append({
+                "course_name": user_course.course.name,
+                "days_since_last_task_completed": days_since_last_task
+            })
+
+        return Response(response_data, status=status.HTTP_200_OK)
