@@ -1,5 +1,6 @@
 import uuid
 from django.template.loader import render_to_string
+from course.certificate import generate_certificate
 from weasyprint import HTML
 from django.utils import timezone
 from django.core.files.base import ContentFile
@@ -381,20 +382,23 @@ class UserTaskViewSet(viewsets.ModelViewSet):
             user_course.certificate_id = str(uuid.uuid4())
             user_course.save()
 
-            # Generate certificate PDF
-            certificate_html = render_to_string('certificate.html', {
-                'user': request.user,
-                'course': course,
-                'completion_date': user_course.created_at,  # Example field
-                'certificate_id': user_course.certificate_id,
-            })
+            # Generate the certificate image using your generate_certificate function
+            output_path = f"media/certificates/certificate_{user_course.certificate_id}.png"
+            
+            # Example field for completion date
+            completion_date = user_course.created_at.strftime("%d-%m-%Y")
 
-            # Convert HTML to PDF
-            pdf_file = HTML(string=certificate_html).write_pdf()
-
-            # Save the PDF to the certificate field
-            pdf_filename = f"certificate_{user_course.certificate_id}.pdf"
-            user_course.certificate.save(pdf_filename, ContentFile(pdf_file))
+            # Call your certificate generation method
+            certificate_path = generate_certificate(
+                student_name=user_course.user.first_name,
+                course_name=course.name,
+                issue_date=completion_date,
+                output_path=output_path
+            )
+            
+            # Save the certificate to the user_course model
+            with open(certificate_path, 'rb') as cert_file:
+                user_course.certificate.save(f"certificate_{user_course.certificate_id}.png", ContentFile(cert_file.read()))
 
             user_course.save()
 
