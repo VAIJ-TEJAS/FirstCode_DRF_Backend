@@ -13,8 +13,8 @@ from course.serializers import (
 )
 from liveclass.models import LiveClass, UserLiveClass
 from liveclass.serializers import LiveClassSerializer, UserLiveClassSerializer
-from otp.tasks import send_welcome_email
 from subscription.models import Subscription, UserSubscription
+from utils.email_dynamic_sender import send_email_with_dynamic_sender
 from .models import Pattern, UserProfile
 from itertools import chain
 from operator import attrgetter
@@ -131,9 +131,6 @@ def google_complete(request):
             user.set_unusable_password()  # Important if password login isn't meant to be used
             user.save()
 
-            # Send welcome email asynchronously using Celery
-            send_welcome_email.delay(email, first_name)
-
         # Authenticate session
         login(request, user)
 
@@ -161,7 +158,7 @@ def google_complete(request):
 
         # Assign the Pattern with code 'VIZ'
         try:
-            default_pattern = Pattern.objects.get(code="VIZ")
+            default_pattern = Pattern.objects.get(code="VI")
         except Pattern.DoesNotExist:
             return Response(
                 {"error": "Default pattern not found"},
@@ -173,6 +170,22 @@ def google_complete(request):
             user=user,
             current_subscription=default_subscription,
             pattern=default_pattern,
+        )
+
+        # Context for rendering the email template
+        context = {
+            'full_name': first_name + ' ' + last_name
+        }
+
+        # Send OTP via email
+        send_email_with_dynamic_sender(
+            subject="Welcome",
+            message=f"Dear {first_name + ' ' + last_name}, Thank you for signing up with us! We are excited to have you on board. If you have any questions, feel free to reach out. Best regards,\nFirstCode",
+            from_email="noreply@firstcode.in",
+            context=context,
+            template='welcome.html',
+            recipient_list=[email],
+            fail_silently=False,
         )
 
         # Serialize the user object

@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from order.models import Order
 from user.models import UserProfile
+from utils.email_dynamic_sender import send_email_with_dynamic_sender
 from .models import Subscription, UserSubscription
 from .serializers import SubscriptionSerializer, UserSubscriptionSerializer
 
@@ -189,9 +190,29 @@ class PaymentWebhookViewSet(viewsets.ViewSet):
             payment=payment_data  # Store the payment data in the subscription
         )
 
+
         # Update the user's profile with the new subscription
         user_profile.current_subscription = user_subscription
         user_profile.save()
+
+        # Context for rendering the email template
+        context = {
+            'name': user_subscription.subscription.name,
+            'validty': user_subscription.subscription.validity,
+            'start_date': user_subscription.subscription_start_date,
+            'end_date': user_subscription.subscription_end_date,
+        }
+
+        # Send OTP via email
+        send_email_with_dynamic_sender(
+            subject="New Subscription Purchased",
+            message=f"",
+            from_email="noreply@firstcode.in",
+            context=context,
+            template='buy_new_subscription.html',
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
 
         serializer = UserSubscriptionSerializer(user_subscription)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -238,6 +259,25 @@ class PaymentWebhookViewSet(viewsets.ViewSet):
         if assign_to_profile:
             user_profile.current_subscription = user_subscription
             user_profile.save()
+
+        # Context for rendering the email template
+        context = {
+            'name': user_subscription.subscription.name,
+            'validty': user_subscription.subscription.validity,
+            'start_date': user_subscription.subscription_start_date,
+            'end_date': user_subscription.subscription_end_date,
+        }
+
+        # Send OTP via email
+        send_email_with_dynamic_sender(
+            subject="Subscription Renewed",
+            message=f"",
+            from_email="noreply@firstcode.in",
+            context=context,
+            template='buy_renew_subscription.html',
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
 
         serializer = UserSubscriptionSerializer(user_subscription)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;200;300;400;500;600;700;800;900" rel="stylesheet" type="text/css"/>
+    <title>Welcome to the Class</title>
+    <style>
+
+        table, td {
+            mso-table-rspace: 0pt;
+            mso-table-lspace: 0pt;
+        }
+        img {
+            -ms-interpolation-mode: bicubic; 
+        }
+
+       
+        img {
+            border: 0;
+            outline: none;
+            text-decoration: none;
+        }
+        table {
+            border-collapse: collapse !important;
+        }
+        body {
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+
+        
+        .container {
+            width: 100%;
+            padding: 20px;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+        .content {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(to top right, #36ABFF, #03bdc3);
+            padding: 20px;
+            color: #ffffff;
+            font-family: 'Roboto';
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .body {
+            padding: 0;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333333;
+        }
+        .body h1 {
+            font-size: 22px;
+            margin-bottom: 10px;
+            color: #333332;
+			font-family: 'Roboto';
+        }
+        .body p {
+            margin: 10px 0;
+			font-family: 'Roboto';
+        }
+        .footer {
+            background-color: #ffffff;
+            padding: 20px;
+            font-size: 14px;
+            color: #666666;
+        }
+        .footer a {
+            color: linear-gradient(to top right, #36ABFF, #03bdc3);;
+            text-decoration: none;
+			font-family: 'Roboto';
+        }
+		.footer p {
+            color: #6c6c6c;
+            text-decoration: none;
+			font-family: 'Roboto';
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #ffffff;
+            background: linear-gradient(to top right, #36ABFF, #03bdc3);;
+            border-radius: 5px;
+            text-decoration: none;
+			font-family: 'Roboto';
+        }
+    </style>
+</head>
+<body class="body">
+    <div class="container">
+        <div class="content">
+            <!-- Header Section -->
+            <div class="header">
+                Subscription Renewed!
+            </div>
+            <!-- Body Section -->
+            <p>Thank you for renewing your subcription.</p>
+            <p>Your subscription <strong>{{ name }}</strong> has a validty of <strong>{{ validity }}</strong> days</p>
+            <p>Valid from <strong>{{ start_date }}</strong></p>
+            <p>Valid till <strong>{{ end_date }}</strong></p>
+            <div class="body">
+                <a href="https://firstcode.in/dashboard/courses/" class="button">Start Learning</a>
+            </div>
+            <img src="https://thumbs.dreamstime.com/b/cute-black-white-adopted-dog-picture-stray-green-grassfocus-head-card-text-thank-you-82771646.jpg" height="300" alt="Welcome Image" title="Welcome Image" style="margin-top: 20px; pointer-events: none;"/>
+            <p style="margin: 10px 20px;">A portion of your subscription payment will go toward helping feed rescue dogs living on different shelters. Your contribution is making a difference in their lives, and we truly appreciate your support!</p>
+            <div class="body">
+                <a href="https://firstcode.in/dashboard/courses/" class="button">Know more</a>
+            </div>
+            <!-- Footer Section -->
+            <div class="footer">
+                <p>Best regards,<br>Team FirstCode.</p>
+				<p><i>Make it Great!</i></p>
+                <p> <a href="mailto:help@firstcode.in">Contact Us</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

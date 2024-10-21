@@ -7,26 +7,26 @@ from .models import (
 
 # Inlines
 
-class TaskInline(nested_admin.NestedTabularInline):
+class TaskInline(nested_admin.NestedStackedInline):
     model = Task
     extra = 1
 
-class LessonInline(nested_admin.NestedTabularInline):
+class LessonInline(nested_admin.NestedStackedInline):
     model = Lesson
     extra = 1
     inlines = [TaskInline]
 
-class ChapterInline(nested_admin.NestedTabularInline):
+class ChapterInline(nested_admin.NestedStackedInline):
     model = Chapter
     extra = 1
     inlines = [LessonInline]
 
-class TrackInline(nested_admin.NestedTabularInline):
+class TrackInline(nested_admin.NestedStackedInline):
     model = Track
     extra = 1
     inlines = [ChapterInline]
 
-class UserCourseInline(nested_admin.NestedTabularInline):
+class UserCourseInline(nested_admin.NestedStackedInline):
     model = UserCourse
     extra = 1
 

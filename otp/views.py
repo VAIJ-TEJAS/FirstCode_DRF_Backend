@@ -11,7 +11,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
-from otp.tasks import send_welcome_email
 from subscription.models import Subscription, UserSubscription
 from user.models import User, UserProfile, Pattern
 from user.serializers import UserSerializer
@@ -48,11 +47,18 @@ class GenerateOTPRegister(APIView):
         # Create OTP object
         OTP.objects.create(email=email, code=otp_code, expires_at=expires_at)
 
+        # Context for rendering the email template
+        context = {
+            'otp': otp_code
+        }
+
         # Send OTP via email
         send_email_with_dynamic_sender(
             subject="Your OTP",
-            message=f"Your OTP is {otp_code}. It will expire in 10 minutes.",
+            message=f"Your OTP is {otp_code}. It will expire in 10 minutes.", # Fallback plain text message
             from_email="noreply@firstcode.in",
+            context=context,
+            template='otp.html',
             recipient_list=[email],
             fail_silently=False,
         )
@@ -98,11 +104,18 @@ class GenerateOTPLogin(APIView):
         # Create OTP object
         OTP.objects.create(email=user.email, code=otp_code, expires_at=expires_at)
 
+        # Context for rendering the email template
+        context = {
+            'otp': otp_code
+        }
+
         # Send OTP via email
         send_email_with_dynamic_sender(
             subject="Your Login OTP",
             message=f"Your OTP is {otp_code}. It will expire in 10 minutes.",
             from_email="noreply@firstcode.in",
+            context=context,
+            template='otp.html',
             recipient_list=[user.email],
             fail_silently=False,
         )
@@ -141,13 +154,20 @@ class SendPasswordResetLink(APIView):
 
         # Build the password reset link
         # Change this to use localhost:3000
-        reset_url = f"https://first-code-react-frontend.vercel.app/auth/reset-password/?email={email}&token={token}"
+        reset_url = f"https://firstcode.in/auth/reset-password/?email={email}&token={token}"
+
+        # Context for rendering the email template
+        context = {
+            'reset_url': reset_url
+        }
 
         # Send the reset password email
         send_email_with_dynamic_sender(
             subject="Password Reset Link",
             message=f"Click on the link to reset your password: {reset_url}",
             from_email="noreply@firstcode.in",
+            context=context,
+            template='reset.html',
             recipient_list=[email],
             fail_silently=False,
         )
@@ -222,7 +242,7 @@ class VerifyOTPRegister(APIView):
 
             # Assign the Pattern with code 'VIZ'
             try:
-                default_pattern = Pattern.objects.get(code="VIZ")
+                default_pattern = Pattern.objects.get(code="VI")
             except Pattern.DoesNotExist:
                 return Response(
                     {"error": "Default pattern not found"},
@@ -232,8 +252,21 @@ class VerifyOTPRegister(APIView):
             # Create UserProfile for the user
             UserProfile.objects.create(user=user, current_subscription=new_subscription, pattern=default_pattern)
 
-             # Send welcome email asynchronously using Celery
-            send_welcome_email.delay(email, user.username)
+            # Context for rendering the email template
+            context = {
+                'full_name': user_data['first_name']
+            }
+
+            # Send OTP via email
+            send_email_with_dynamic_sender(
+                subject="Welcome",
+                message=f"Dear {user_data['first_name']}, Thank you for signing up with us! We are excited to have you on board. If you have any questions, feel free to reach out. Best regards,\nFirstCode",
+                from_email="noreply@firstcode.in",
+                context=context,
+                template='welcome.html',
+                recipient_list=[email],
+                fail_silently=False,
+            )
 
             return Response(
                 {"token": token.key, "user": user_serializer.data},
