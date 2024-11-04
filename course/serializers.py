@@ -52,7 +52,7 @@ class MyTaskSerializer(serializers.ModelSerializer):
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
-        fields = ["id", "name"]
+        fields = ["id", "name", "order"]
 
 
 class MyOverviewLessonSerializer(serializers.ModelSerializer):
@@ -302,6 +302,7 @@ class CourseSerializer(BaseCourseSerializer):
             "id",
             "name"
         ]
+
 
 class OverviewCourseSerializer(BaseCourseSerializer):
     tags = TagSerializer(many=True)
