@@ -54,9 +54,13 @@ class Chapter(models.Model):
     track = models.ForeignKey(Track, on_delete=models.CASCADE, related_name='chapters')
     name = models.CharField(max_length=255)
     description = models.TextField()
+    order = models.IntegerField(default=0)
 
     def __str__(self):
         return self.name
+    
+    class Meta:
+        ordering = ['order']
 
 
 class Lesson(models.Model):
@@ -76,9 +80,13 @@ class Lesson(models.Model):
     playground_type = models.CharField(max_length=50, choices=PLAYGROUND_TYPE_CHOICES)
     quote = models.CharField(max_length=255, blank=True, null=True)
     iframe_url = models.URLField(blank=True, null=True)
+    order = models.IntegerField(default=0)
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        ordering = ['order']
 
 
 class Task(models.Model):
