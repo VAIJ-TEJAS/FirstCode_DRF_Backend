@@ -92,7 +92,7 @@ class Lesson(models.Model):
 class Task(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='tasks')
     name = models.CharField(max_length=255)
-    description = models.TextField()
+    description = RichTextField()
 
     def __str__(self):
         return self.name
