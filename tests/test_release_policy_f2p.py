@@ -91,7 +91,13 @@ def test_f2p_015_decision_to_dict_contains_expected_keys() -> None:
 
     payload = decision_to_dict(decision)
 
-    assert set(payload.keys()) == {"approved", "reason", "blockers", "risk_level"}
+    assert set(payload.keys()) == {
+        "approved",
+        "reason",
+        "blockers",
+        "risk_level",
+        "requires_rollback_plan",
+    }
 
 
 def test_f2p_016_release_context_contains_decision_payload() -> None:
@@ -106,3 +112,31 @@ def test_f2p_016_release_context_contains_decision_payload() -> None:
 
     assert "decision" in context
     assert isinstance(context["decision"], dict)
+
+
+def test_f2p_017_large_change_size_requires_rollback_even_without_warnings() -> None:
+    decision = evaluate_release_policy(
+        branch_name="main",
+        now_utc=datetime(2026, 3, 9, 8, 0, tzinfo=timezone.utc),
+        runtime_summary={"error": 0, "warning": 0},
+        ci_passed=True,
+        required_reviewers_approved=True,
+        change_size=1300,
+    )
+
+    payload = decision_to_dict(decision)
+    assert payload["requires_rollback_plan"] is True
+
+
+def test_f2p_018_small_change_size_keeps_rollback_plan_optional() -> None:
+    decision = evaluate_release_policy(
+        branch_name="main",
+        now_utc=datetime(2026, 3, 9, 8, 0, tzinfo=timezone.utc),
+        runtime_summary={"error": 0, "warning": 1},
+        ci_passed=True,
+        required_reviewers_approved=True,
+        change_size=350,
+    )
+
+    payload = decision_to_dict(decision)
+    assert payload["requires_rollback_plan"] is False

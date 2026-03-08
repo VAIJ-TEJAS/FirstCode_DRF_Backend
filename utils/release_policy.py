@@ -20,6 +20,7 @@ class ReleaseDecision:
     reason: str
     blockers: List[str]
     risk_level: str
+    requires_rollback_plan: bool
 
 
 DEFAULT_WINDOWS = [
@@ -48,6 +49,12 @@ def _risk_level(error_count: int, warning_count: int, change_size: int) -> str:
     if warning_count >= 2 or change_size > 800:
         return "medium"
     return "low"
+
+
+def _requires_rollback_plan(risk_level: str, change_size: int) -> bool:
+    if risk_level in {"high", "critical"}:
+        return True
+    return change_size >= 1200
 
 
 def evaluate_release_policy(
@@ -85,6 +92,7 @@ def evaluate_release_policy(
         blockers.append("Runtime safety report contains blocking errors.")
 
     risk = _risk_level(error_count, warning_count, change_size)
+    requires_rollback_plan = _requires_rollback_plan(risk, change_size)
     approved = len(blockers) == 0
 
     if approved:
@@ -97,6 +105,7 @@ def evaluate_release_policy(
         reason=reason,
         blockers=blockers,
         risk_level=risk,
+        requires_rollback_plan=requires_rollback_plan,
     )
 
 
@@ -106,6 +115,7 @@ def decision_to_dict(decision: ReleaseDecision) -> Dict[str, object]:
         "reason": decision.reason,
         "blockers": list(decision.blockers),
         "risk_level": decision.risk_level,
+        "requires_rollback_plan": decision.requires_rollback_plan,
     }
 
 
