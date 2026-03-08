@@ -31,6 +31,7 @@ def test_p2p_010_release_flow_large_change_is_high_risk_even_if_approved() -> No
 
     assert decision.approved is True
     assert decision.risk_level == "high"
+    assert decision.requires_rollback_plan is True
 
 
 def test_p2p_011_release_flow_requires_reviewer_approval() -> None:
@@ -123,3 +124,30 @@ def test_p2p_016_master_branch_is_still_treated_as_deployable() -> None:
     )
 
     assert decision.approved is True
+
+
+def test_p2p_017_context_contains_rollback_plan_signal() -> None:
+    context = build_release_context(
+        branch_name="main",
+        now_utc=datetime(2026, 3, 10, 9, 0, tzinfo=timezone.utc),
+        runtime_summary={"error": 0, "warning": 4},
+        ci_passed=True,
+        required_reviewers_approved=True,
+        change_size=1650,
+    )
+
+    assert "requires_rollback_plan" in context["decision"]
+    assert context["decision"]["requires_rollback_plan"] is True
+
+
+def test_p2p_018_context_rollback_signal_false_for_small_low_risk_changes() -> None:
+    context = build_release_context(
+        branch_name="main",
+        now_utc=datetime(2026, 3, 10, 9, 0, tzinfo=timezone.utc),
+        runtime_summary={"error": 0, "warning": 0},
+        ci_passed=True,
+        required_reviewers_approved=True,
+        change_size=250,
+    )
+
+    assert context["decision"]["requires_rollback_plan"] is False
