@@ -11,6 +11,7 @@ from otp.views import GenerateOTPLogin, GenerateOTPRegister, PasswordResetConfir
 from subscription import views as subscription_views
 from user import views as user_views
 from quote import views as quote_views
+from course.planner.views import LearningPathPlannerAPIView
 
 # Initialize the router
 router = DefaultRouter()
@@ -53,6 +54,7 @@ router.register(r'webhook', subscription_views.PaymentWebhookViewSet, basename='
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
+    path('learning-path/planner/', LearningPathPlannerAPIView.as_view(), name='learning-path-planner'),
     path('google-complete/', user_views.google_complete, name='google_complete'),
     path('generate-otp-register/', GenerateOTPRegister.as_view(), name='generate-otp-register'),
     path('verify-otp/', VerifyOTPRegister.as_view(), name='verify-otp'),
