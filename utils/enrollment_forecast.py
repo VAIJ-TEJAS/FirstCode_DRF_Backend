@@ -36,6 +36,8 @@ def _safe_rate(numerator: int, denominator: int) -> float:
 def _confidence(variation: float, volume: int) -> str:
     if volume < 150:
         return "low"
+    if volume < 180:
+        return "medium"
     if variation > 18:
         return "medium"
     return "high"
