@@ -59,3 +59,36 @@ def project_quarter(quarter: str, funnels: Iterable[PlacementFunnel]) -> Placeme
 
 def monthly_accept_breakdown(funnels: Iterable[PlacementFunnel]) -> Dict[str, int]:
     return {item.month: max(0, item.offers_accepted) for item in funnels}
+
+
+def projection_confidence(funnels: Iterable[PlacementFunnel]) -> str:
+    rows = list(funnels)
+    if len(rows) < 2:
+        return "low"
+
+    accept_rates = []
+    for row in rows:
+        accept_rates.append(_rate(max(0, row.offers_accepted), max(1, row.offers_received)))
+
+    spread = max(accept_rates) - min(accept_rates)
+    volume = sum(max(0, item.eligible_learners) for item in rows)
+
+    if volume < 120:
+        return "low"
+    if spread > 20:
+        return "medium"
+    return "high"
+
+
+def explain_projection(quarter: str, funnels: Iterable[PlacementFunnel]) -> Dict[str, object]:
+    rows = list(funnels)
+    projection = project_quarter(quarter, rows)
+    return {
+        "quarter": quarter,
+        "projected_accepts": projection.projected_accepts,
+        "interview_clear_rate": projection.interview_clear_rate,
+        "offer_rate": projection.offer_rate,
+        "accept_rate": projection.accept_rate,
+        "confidence": projection_confidence(rows),
+        "months": [row.month for row in rows],
+    }

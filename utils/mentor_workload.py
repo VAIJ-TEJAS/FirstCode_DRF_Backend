@@ -66,3 +66,30 @@ def cohort_load_summary(loads: Iterable[MentorLoad], cohort_id: str) -> Dict[str
 
 def mentors_needing_support(loads: Iterable[MentorLoad]) -> List[str]:
     return [signal.mentor_id for signal in (evaluate_mentor(item) for item in loads) if signal.status != "balanced"]
+
+
+def team_pressure_map(loads: Iterable[MentorLoad]) -> Dict[str, float]:
+    totals: Dict[str, List[float]] = {}
+    for row in loads:
+        signal = evaluate_mentor(row)
+        totals.setdefault(row.cohort_id, []).append(signal.load_score)
+
+    return {
+        cohort_id: round(sum(scores) / len(scores), 2) if scores else 0.0
+        for cohort_id, scores in sorted(totals.items(), key=lambda item: item[0])
+    }
+
+
+def explain_mentor_signal(load: MentorLoad) -> Dict[str, object]:
+    signal = evaluate_mentor(load)
+    return {
+        "mentor_id": signal.mentor_id,
+        "cohort_id": load.cohort_id,
+        "learners_assigned": load.learners_assigned,
+        "pending_doubts": load.pending_doubts,
+        "pending_reviews": load.pending_reviews,
+        "avg_response_minutes": load.avg_response_minutes,
+        "load_score": signal.load_score,
+        "status": signal.status,
+        "actions": list(signal.actions),
+    }
