@@ -73,3 +73,21 @@ def summarize_bands(signals: Iterable[RetentionSignal]) -> Dict[str, int]:
     for signal in signals:
         summary[signal.band] += 1
     return summary
+
+
+def intervention_heatmap(signals: Iterable[RetentionSignal]) -> Dict[str, int]:
+    counts: Dict[str, int] = {}
+    for signal in signals:
+        for intervention in signal.interventions:
+            counts[intervention] = counts.get(intervention, 0) + 1
+    return dict(sorted(counts.items(), key=lambda item: (-item[1], item[0])))
+
+
+def explain_signal(signal: RetentionSignal) -> Dict[str, object]:
+    return {
+        "learner_id": signal.learner_id,
+        "score": signal.score,
+        "band": signal.band,
+        "requires_intervention": len(signal.interventions) > 0,
+        "interventions": list(signal.interventions),
+    }
