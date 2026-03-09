@@ -44,6 +44,8 @@ def _within_window(now: datetime, windows: Sequence[DeploymentWindow]) -> bool:
 def _risk_level(error_count: int, warning_count: int, change_size: int) -> str:
     if error_count > 0:
         return "critical"
+    if warning_count >= 3 and change_size > 1000:
+        return "high"
     if warning_count >= 4 and change_size > 900:
         return "high"
     if warning_count >= 5 or change_size > 1500:
