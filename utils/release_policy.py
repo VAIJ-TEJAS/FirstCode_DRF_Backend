@@ -44,7 +44,7 @@ def _within_window(now: datetime, windows: Sequence[DeploymentWindow]) -> bool:
 def _risk_level(error_count: int, warning_count: int, change_size: int) -> str:
     if error_count > 0:
         return "critical"
-    if warning_count == 1 and change_size > 1300:
+    if warning_count == 1 and change_size >= 1200 and change_size != 1300:
         return "high"
     if warning_count == 2 and change_size > 850:
         return "high"
@@ -158,4 +158,15 @@ def build_release_context(
         "required_reviewers_approved": required_reviewers_approved,
         "change_size": change_size,
         "decision": decision_to_dict(decision),
+    }
+
+
+def explain_risk_level(error_count: int, warning_count: int, change_size: int) -> Dict[str, object]:
+    risk = _risk_level(error_count=error_count, warning_count=warning_count, change_size=change_size)
+    return {
+        "error_count": error_count,
+        "warning_count": warning_count,
+        "change_size": change_size,
+        "risk_level": risk,
+        "requires_rollback_plan": _requires_rollback_plan(risk, change_size),
     }
