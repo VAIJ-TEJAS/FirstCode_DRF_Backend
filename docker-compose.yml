@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # Redis for caching and Celery
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend_network
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: firstcode
+      POSTGRES_USER: firstcode
+      POSTGRES_PASSWORD: firstcode123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - backend_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U firstcode -d firstcode"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Django Backend
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=FirstCode_DRF_Backend.settings
+      - DATABASE_URL=postgres://firstcode:firstcode123@db:5432/firstcode
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DEBUG=True
+      - SECRET_KEY=your-secret-key-here-change-in-production
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - backend_network
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  # Celery Worker
+  celery_worker:
+    build: .
+    environment:
+      - DJANGO_SETTINGS_MODULE=FirstCode_DRF_Backend.settings
+      - DATABASE_URL=postgres://firstcode:firstcode123@db:5432/firstcode
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+      - backend
+    networks:
+      - backend_network
+    restart: unless-stopped
+    command: celery -A FirstCode_DRF_Backend worker -l info
+
+  # Celery Beat Scheduler
+  celery_beat:
+    build: .
+    environment:
+      - DJANGO_SETTINGS_MODULE=FirstCode_DRF_Backend.settings
+      - DATABASE_URL=postgres://firstcode:firstcode123@db:5432/firstcode
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+      - backend
+    networks:
+      - backend_network
+    restart: unless-stopped
+    command: celery -A FirstCode_DRF_Backend beat -l info
+
+networks:
+  backend_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
