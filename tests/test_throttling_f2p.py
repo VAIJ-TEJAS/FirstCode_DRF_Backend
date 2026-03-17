@@ -382,8 +382,10 @@ class TestF2PWebhookThrottle:
         """Verify webhook ID extraction."""
         throttle = WebhookThrottle()
         request = Mock()
-        request.META = {"HTTP_X_WEBHOOK_ID": "webhook-123"}
-        request.META.get = request.META.get
+        class Meta(dict):
+            pass
+
+        request.META = Meta({"HTTP_X_WEBHOOK_ID": "webhook-123"})
         
         # Note: We can't easily mock the full behavior, but we verify the logic exists
         ident = throttle.get_ident(request)

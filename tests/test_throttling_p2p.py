@@ -19,6 +19,7 @@ from utils.throttling import (
     AdminBypassThrottle,
     AuditSensitiveThrottle,
     BurstRateThrottle,
+    ContentCreationThrottle,
     DynamicRateThrottle,
     ExportThrottle,
     IPRateThrottle,
@@ -26,6 +27,7 @@ from utils.throttling import (
     RateLimitHeadersMiddleware,
     RateLimitInfo,
     SustainedRateThrottle,
+    WebhookThrottle,
     get_throttle_classes,
 )
 
@@ -85,6 +87,9 @@ class MockResponse:
 
     def __setitem__(self, key, value):
         self.headers[key] = value
+
+    def get(self, key, default=None):
+        return self.headers.get(key, default)
 
 
 class TestP2PThrottleIntegration:

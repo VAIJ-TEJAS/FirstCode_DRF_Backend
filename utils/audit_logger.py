@@ -181,6 +181,11 @@ class AuditEntry:
         """Check if entry has meaningful changes beyond ignored fields."""
         if self.action != AuditAction.UPDATE:
             return True
+        # For update events, we prefer a field-level diff, but some callers/tests
+        # intentionally emit UPDATE entries without explicit `changes`. Those are
+        # still meaningful from an audit trail standpoint.
+        if not self.changes:
+            return True
         ignore = set(ignore_fields or ["updated_at", "last_modified", "modified_at"])
         significant = [c for c in self.changes if c.field_name not in ignore]
         return len(significant) > 0
@@ -197,11 +202,12 @@ class AuditLogger:
     _enabled: bool = True
     _ignored_models: set[str] = set()
     _ignored_fields: dict[str, set[str]] = {}
+    _UNSET: object = object()
 
     @classmethod
     def configure(
         cls,
-        storage: Optional[AuditStorage] = None,
+        storage: Optional[AuditStorage] | object = _UNSET,
         enabled: bool = True,
         ignored_models: Optional[list[str]] = None,
     ) -> None:
@@ -212,7 +218,8 @@ class AuditLogger:
             enabled: Whether logging is enabled
             ignored_models: List of model names to ignore
         """
-        cls._storage = storage
+        if storage is not cls._UNSET:
+            cls._storage = storage  # type: ignore[assignment]
         cls._enabled = enabled
         if ignored_models:
             cls._ignored_models = set(ignored_models)
@@ -374,8 +381,28 @@ class AuditLogger:
     def _serialize_instance(instance: models.Model) -> dict[str, Any]:
         """Serialize a model instance to dictionary."""
         result: dict[str, Any] = {"_model": instance.__class__.__name__}
-        for field in instance._meta.fields:
-            value = getattr(instance, field.name)
+        meta = getattr(instance, "_meta", None)
+        if not meta or not getattr(meta, "fields", None):
+            # Allow lightweight objects in tests (and some service-layer calls).
+            # We only capture simple, JSON-friendly attributes.
+            for key, value in getattr(instance, "__dict__", {}).items():
+                if key.startswith("_"):
+                    continue
+                if callable(value):
+                    continue
+                if value is None:
+                    result[key] = None
+                elif isinstance(value, datetime):
+                    result[key] = value.isoformat()
+                else:
+                    result[key] = str(value) if not isinstance(value, (str, int, float, bool, list, dict)) else value
+            # Include a stable identifier if present.
+            if "pk" not in result and hasattr(instance, "pk"):
+                result["pk"] = getattr(instance, "pk")
+            return result
+
+        for field in meta.fields:
+            value = getattr(instance, field.name, None)
             if value is None:
                 result[field.name] = None
             elif isinstance(value, datetime):
@@ -401,8 +428,8 @@ class AuditLogger:
             if field.name in ignored_fields:
                 continue
 
-            old_value = getattr(old_instance, field.name)
-            new_value = getattr(new_instance, field.name)
+            old_value = getattr(old_instance, field.name, None)
+            new_value = getattr(new_instance, field.name, None)
 
             if old_value != new_value:
                 changes.append(FieldChange(

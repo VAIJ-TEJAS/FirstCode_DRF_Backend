@@ -113,8 +113,8 @@ class PremiumUserRateThrottle(UserRateThrottle):
             if request.user.subscription.is_premium:
                 return super().allow_request(request, view)
         
-        # Fall back to standard throttle
-        return True
+        # Non-premium users should not pass the premium throttle.
+        return False
 
 
 class AdminBypassThrottle(BaseThrottle):
@@ -122,6 +122,8 @@ class AdminBypassThrottle(BaseThrottle):
     
     Allows admin users unlimited API access.
     """
+    
+    scope = "admin_bypass"
     
     def allow_request(self, request: HttpRequest, view: APIView) -> bool:
         """Always allow admin users."""
@@ -144,7 +146,18 @@ class AuditSensitiveThrottle(UserRateThrottle):
     
     def wait(self) -> Optional[float]:
         """Return wait time with logging."""
-        wait_time = super().wait()
+        if not hasattr(self, "now"):
+            history = getattr(self, "history", None) or []
+            duration = getattr(self, "duration", None)
+            if history and duration:
+                import time as _time
+                now = _time.time()
+                remaining = duration - (now - history[-1])
+                wait_time = max(remaining, 0.0)
+            else:
+                wait_time = None
+        else:
+            wait_time = super().wait()
         if wait_time:
             logger.warning(f"Audit-sensitive endpoint rate limit hit, wait: {wait_time}s")
         return wait_time
@@ -173,7 +186,21 @@ class ExportThrottle(UserRateThrottle):
     
     def wait(self) -> Optional[float]:
         """Return wait time with user-friendly message."""
-        wait_time = super().wait()
+        # DRF's base implementation expects `self.now` to be set during
+        # `allow_request()`. Some integration tests call `wait()` directly, so
+        # we defensively compute the window ourselves when needed.
+        if not hasattr(self, "now"):
+            history = getattr(self, "history", None) or []
+            duration = getattr(self, "duration", None)
+            if history and duration:
+                import time as _time
+                now = _time.time()
+                remaining = duration - (now - history[-1])
+                wait_time = max(remaining, 0.0)
+            else:
+                wait_time = None
+        else:
+            wait_time = super().wait()
         if wait_time:
             minutes = int(wait_time // 60)
             self.detail = f"Export limit reached. Please wait {minutes} minutes before next export."
@@ -204,6 +231,8 @@ class DynamicRateThrottle(BaseThrottle):
     
     Automatically adjusts rate limits based on system health metrics.
     """
+    
+    scope = "dynamic"
     
     default_rate = "100/minute"
     high_load_rate = "50/minute"
