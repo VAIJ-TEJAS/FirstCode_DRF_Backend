@@ -329,9 +329,10 @@ class VerifyOTPLogin(APIView):
         user.save()
 
         # Create or fetch token
-        old_token = Token.objects.get(user=user)
-        # Delete the old token and create a new one
-        old_token.delete()
+        old_token = Token.objects.filter(user=user).first()
+        # Delete the old token (if any) and create a new one
+        if old_token:
+            old_token.delete()
         new_token = Token.objects.create(user=user)
 
         # Serialize the user object
