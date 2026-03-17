@@ -22,6 +22,7 @@ from utils.audit_logger import (
     AuditLevel,
     AuditStorage,
     FieldChange,
+    InMemoryAuditStorage,
 )
 
 
@@ -222,6 +223,10 @@ class AuditLog(models.Model):
 
     class Meta:
         """Model metadata."""
+        # This model lives in `utils/` and is used by lightweight evaluators/tests.
+        # Declaring an explicit label lets Django load it without requiring `utils`
+        # to be a full installed app.
+        app_label = "utils"
         ordering = ["-timestamp"]
         indexes = [
             Index(fields=["entity_type", "entity_id", "-timestamp"]),
