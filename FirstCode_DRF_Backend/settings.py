@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from celery.schedules import crontab
+import dj_database_url
 
 load_dotenv()
 
@@ -103,6 +104,16 @@ DATABASES = {
     }
 }
 
+# Allow DATABASE_URL override (Docker/production-style deployments).
+# Example: postgres://user:pass@db:5432/firstcode
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    DATABASES["default"] = dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=60,
+        ssl_require=False,
+    )
+
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
@@ -156,8 +167,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = "/media/"
 
 # Redis as the broker for Celery
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
 CELERY_BEAT_SCHEDULE = {
     'update-subscriptions-every-day': {
         'task': 'subscriptions.tasks.update_subscriptions',
