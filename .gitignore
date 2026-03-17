@@ -10,3 +10,6 @@ db.sqlite3
 /static
 
 /.env
+
+# Celery beat runtime schedule (local/dev)
+celerybeat-schedule
