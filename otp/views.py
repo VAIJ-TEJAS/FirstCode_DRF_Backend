@@ -71,20 +71,28 @@ class GenerateOTPLogin(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        username = request.data.get("email")
+        email = request.data.get("email")
         password = request.data.get("password")
 
-        if not username or not password:
+        if not email or not password:
             return Response(
-                {"error": "Username and password are required"},
+                {"error": "Email and password are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Authenticate user
-        user = authenticate(username=username, password=password)
+        # Authenticate by email (email is the UX identifier, but Django auth uses username).
+        try:
+            user_record = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Invalid email or password"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = authenticate(username=user_record.username, password=password)
         if not user:
             return Response(
-                {"error": "Invalid username or password"},
+                {"error": "Invalid email or password"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
