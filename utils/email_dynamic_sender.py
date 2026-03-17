@@ -1,50 +1,89 @@
-from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
+from __future__ import annotations
+
+import os
+
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives, get_connection
 from django.core.mail.backends.smtp import EmailBackend
-
-def send_email_with_dynamic_sender(subject, message, from_email, recipient_list, template, context, fail_silently=False):
-    # Define your email settings for each sender email
-    email_settings = {
-        "noreply@firstcode.in": {
-            "EMAIL_HOST": 'smtp.zoho.in',
-            "EMAIL_PORT": 465,
-            "EMAIL_HOST_USER": 'noreply@firstcode.in',
-            "EMAIL_HOST_PASSWORD": 't2x_wdw~ekD_e_+',
-            "EMAIL_USE_SSL": True,
-        },
-        "updates@firstcode.in": {
-            "EMAIL_HOST": 'smtp.zoho.in',
-            "EMAIL_PORT": 465,
-            "EMAIL_HOST_USER": 'updates@firstcode.in',
-            "EMAIL_HOST_PASSWORD": 'u2x_wdw~ekD_e_+',
-            "EMAIL_USE_SSL": True,
-        },
-    }
-
-    # Select the email settings based on the `from_email` argument
-    selected_settings = email_settings.get(from_email)
+from django.template.loader import render_to_string
 
 
-    # Create an email backend instance with the selected settings
-    email_backend = EmailBackend(
-        host=selected_settings["EMAIL_HOST"],
-        port=selected_settings["EMAIL_PORT"],
-        username=selected_settings["EMAIL_HOST_USER"],
-        password=selected_settings["EMAIL_HOST_PASSWORD"],
-        use_tls=selected_settings.get("EMAIL_USE_TLS", False),
-        use_ssl=selected_settings.get("EMAIL_USE_SSL", False)
+def _is_non_smtp_backend() -> bool:
+    backend = str(getattr(settings, "EMAIL_BACKEND", "") or "")
+    # Common local/dev backends: console, filebased, locmem
+    return any(
+        token in backend.lower()
+        for token in [
+            "consoleemailbackend",
+            "filebasedemailbackend",
+            "locmememailbackend",
+            "dummyemailbackend",
+        ]
     )
 
-    # Render the HTML template with the context
+
+def send_email_with_dynamic_sender(
+    subject,
+    message,
+    from_email,
+    recipient_list,
+    template,
+    context,
+    fail_silently=False,
+):
+    """
+    Send email while allowing per-sender SMTP config in production.
+
+    In local/docker environments (console backend), we intentionally respect
+    Django's configured EMAIL_BACKEND so OTP/reset flows work without SMTP.
+    """
+
+    # Allow explicit override to disable SMTP and always use configured backend.
+    if _is_non_smtp_backend() or os.getenv("DISABLE_SMTP_SENDING", "").strip().lower() in {"1", "true", "yes", "on"}:
+        connection = get_connection()  # Uses settings.EMAIL_BACKEND
+    else:
+        # Per-sender SMTP settings are read from environment variables.
+        # If not provided, fall back to the project's configured email backend.
+        if from_email == "noreply@firstcode.in":
+            host = os.getenv("NOREPLY_EMAIL_HOST")
+            port = int(os.getenv("NOREPLY_EMAIL_PORT", "465"))
+            username = os.getenv("NOREPLY_EMAIL_USER")
+            password = os.getenv("NOREPLY_EMAIL_PASSWORD")
+            use_ssl = os.getenv("NOREPLY_EMAIL_USE_SSL", "true").lower() in {"1", "true", "yes", "on"}
+            use_tls = os.getenv("NOREPLY_EMAIL_USE_TLS", "false").lower() in {"1", "true", "yes", "on"}
+        elif from_email == "updates@firstcode.in":
+            host = os.getenv("UPDATES_EMAIL_HOST")
+            port = int(os.getenv("UPDATES_EMAIL_PORT", "465"))
+            username = os.getenv("UPDATES_EMAIL_USER")
+            password = os.getenv("UPDATES_EMAIL_PASSWORD")
+            use_ssl = os.getenv("UPDATES_EMAIL_USE_SSL", "true").lower() in {"1", "true", "yes", "on"}
+            use_tls = os.getenv("UPDATES_EMAIL_USE_TLS", "false").lower() in {"1", "true", "yes", "on"}
+        else:
+            host = username = password = None
+            port = 465
+            use_ssl = True
+            use_tls = False
+
+        if host and username and password:
+            connection = EmailBackend(
+                host=host,
+                port=port,
+                username=username,
+                password=password,
+                use_tls=use_tls,
+                use_ssl=use_ssl,
+            )
+        else:
+            connection = get_connection()
+
     html_content = render_to_string(template, context)
 
-    # Send the email using the configured backend
     email = EmailMultiAlternatives(
         subject=subject,
-        body=message,  # Fallback message for non-HTML email clients
+        body=message,
         from_email=from_email,
         to=recipient_list,
-        connection=email_backend
+        connection=connection,
     )
     email.attach_alternative(html_content, "text/html")
     email.send(fail_silently=fail_silently)
