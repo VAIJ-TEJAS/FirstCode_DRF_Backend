@@ -12,7 +12,13 @@ from subscription import views as subscription_views
 from user import views as user_views
 from quote import views as quote_views
 from course.planner.views import LearningPathPlannerAPIView
-from enterprise.views import ChangeRiskEvaluateAPIView, LivenessAPIView, ReadinessAPIView, SloForecastEvaluateAPIView
+from enterprise.views import (
+    AccreditationOpsEvaluateAPIView,
+    ChangeRiskEvaluateAPIView,
+    LivenessAPIView,
+    ReadinessAPIView,
+    SloForecastEvaluateAPIView,
+)
 
 # Initialize the router
 router = DefaultRouter()
@@ -66,6 +72,11 @@ urlpatterns = [
         'enterprise/slo-forecast/evaluate/',
         SloForecastEvaluateAPIView.as_view(),
         name='enterprise-slo-forecast-evaluate',
+    ),
+    path(
+        'enterprise/accreditation-ops/evaluate/',
+        AccreditationOpsEvaluateAPIView.as_view(),
+        name='enterprise-accreditation-ops-evaluate',
     ),
     path('learning-path/planner/', LearningPathPlannerAPIView.as_view(), name='learning-path-planner'),
     path('google-complete/', user_views.google_complete, name='google_complete'),

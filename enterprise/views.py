@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 from enterprise.health import build_liveness_payload, build_readiness_payload
 from utils.change_risk_gate import decision_to_camel_dict, evaluate_change_batch, parse_batch_from_json
 from utils.slo_forecaster import evaluate_slo_forecast, parse_forecast_from_json, result_to_camel_dict
+from utils.accreditation_ops import evaluate_accreditation_submission, load_evidence_catalog, parse_submission_payload
 
 
 class LivenessAPIView(APIView):
@@ -73,3 +74,25 @@ class SloForecastEvaluateAPIView(APIView):
         now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         result = evaluate_slo_forecast(batch, now_iso)
         return Response(result_to_camel_dict(result), status=status.HTTP_200_OK)
+
+
+class AccreditationOpsEvaluateAPIView(APIView):
+    """
+    POST JSON: institutionId, cycleLabel, submission: { [evidenceId]: { status, confidence } }
+    """
+
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        body = request.data
+        if not isinstance(body, dict):
+            return Response({"detail": "Expected a JSON object body."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            institution_id, cycle_label, submission = parse_submission_payload(body)
+        except (TypeError, ValueError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        catalog = load_evidence_catalog()
+        result = evaluate_accreditation_submission(catalog, submission, institution_id, cycle_label, now_iso)
+        return Response(result, status=status.HTTP_200_OK)
