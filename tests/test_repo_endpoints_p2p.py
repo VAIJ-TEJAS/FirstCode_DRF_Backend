@@ -46,6 +46,12 @@ def test_p2p_001_enterprise_endpoint_catalog_validates_with_no_issues() -> None:
     endpoints = [
         EndpointExpectation(path="/health/live/", method="GET", public=True, expected_status_range=(200, 299)),
         EndpointExpectation(path="/health/ready/", method="GET", public=True, expected_status_range=(200, 503)),
+        EndpointExpectation(
+            path="/enterprise/change-risk/evaluate/",
+            method="POST",
+            public=True,
+            expected_status_range=(200, 400),
+        ),
         EndpointExpectation(path="/learning-path/planner/", method="POST", public=False, expected_status_range=(200, 400)),
         EndpointExpectation(path="/current-user/", method="GET", public=False, expected_status_range=(200, 401)),
     ]

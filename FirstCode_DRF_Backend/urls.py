@@ -12,7 +12,7 @@ from subscription import views as subscription_views
 from user import views as user_views
 from quote import views as quote_views
 from course.planner.views import LearningPathPlannerAPIView
-from enterprise.views import LivenessAPIView, ReadinessAPIView
+from enterprise.views import ChangeRiskEvaluateAPIView, LivenessAPIView, ReadinessAPIView
 
 # Initialize the router
 router = DefaultRouter()
@@ -57,6 +57,11 @@ urlpatterns = [
     path('', include(router.urls)),
     path('health/live/', LivenessAPIView.as_view(), name='health-live'),
     path('health/ready/', ReadinessAPIView.as_view(), name='health-ready'),
+    path(
+        'enterprise/change-risk/evaluate/',
+        ChangeRiskEvaluateAPIView.as_view(),
+        name='enterprise-change-risk-evaluate',
+    ),
     path('learning-path/planner/', LearningPathPlannerAPIView.as_view(), name='learning-path-planner'),
     path('google-complete/', user_views.google_complete, name='google_complete'),
     path('generate-otp-register/', GenerateOTPRegister.as_view(), name='generate-otp-register'),
