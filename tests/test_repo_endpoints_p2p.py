@@ -52,6 +52,12 @@ def test_p2p_001_enterprise_endpoint_catalog_validates_with_no_issues() -> None:
             public=True,
             expected_status_range=(200, 400),
         ),
+        EndpointExpectation(
+            path="/enterprise/slo-forecast/evaluate/",
+            method="POST",
+            public=True,
+            expected_status_range=(200, 400),
+        ),
         EndpointExpectation(path="/learning-path/planner/", method="POST", public=False, expected_status_range=(200, 400)),
         EndpointExpectation(path="/current-user/", method="GET", public=False, expected_status_range=(200, 401)),
     ]
