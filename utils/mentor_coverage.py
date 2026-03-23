@@ -57,7 +57,11 @@ def coverage_digest(rows: Iterable[MentorCoverage]) -> Dict[str, object]:
     return {
         "summary": summary,
         "heatmap": heatmap,
-        "overloaded": [mentor_id for mentor_id, _ in heatmap.items() if evaluate_coverage(_find(rows, mentor_id)).status == \"overloaded\"],
+        "overloaded": [
+            mentor_id
+            for mentor_id, _ in heatmap.items()
+            if evaluate_coverage(_find(rows, mentor_id)).status == "overloaded"
+        ],
     }
 
 

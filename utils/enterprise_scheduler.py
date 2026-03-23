@@ -82,6 +82,6 @@ def cohort_load_map(blocks: Iterable[SessionBlock]) -> Dict[str, int]:
 def block_heatmap(blocks: Iterable[SessionBlock]) -> Dict[str, int]:
     heatmap: Dict[str, int] = {}
     for block in blocks:
-        key = f\"{block.day_of_week}-{block.start_hour}\"
+        key = f"{block.day_of_week}-{block.start_hour}"
         heatmap[key] = heatmap.get(key, 0) + 1
     return dict(sorted(heatmap.items(), key=lambda item: item[0]))
