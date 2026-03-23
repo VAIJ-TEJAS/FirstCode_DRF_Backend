@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, TypedDict
 
 
 @dataclass(frozen=True)
@@ -19,6 +19,14 @@ class CoverageScore:
     mentor_id: str
     utilization_percent: float
     status: str
+
+
+class CoverageDigest(TypedDict):
+    summary: Dict[str, int]
+    heatmap: Dict[str, float]
+    pressure: float
+    overloaded: List[str]
+    alerts: List[str]
 
 
 def _rate(value: int, total: int) -> float:
@@ -49,27 +57,6 @@ def coverage_summary(rows: Iterable[MentorCoverage]) -> Dict[str, int]:
 
 def coverage_heatmap(rows: Iterable[MentorCoverage]) -> Dict[str, float]:
     return {row.mentor_id: evaluate_coverage(row).utilization_percent for row in rows}
-
-
-def coverage_digest(rows: Iterable[MentorCoverage]) -> Dict[str, object]:
-    summary = coverage_summary(rows)
-    heatmap = coverage_heatmap(rows)
-    return {
-        "summary": summary,
-        "heatmap": heatmap,
-        "overloaded": [
-            mentor_id
-            for mentor_id, _ in heatmap.items()
-            if evaluate_coverage(_find(rows, mentor_id)).status == "overloaded"
-        ],
-    }
-
-
-def _find(rows: Iterable[MentorCoverage], mentor_id: str) -> MentorCoverage:
-    for row in rows:
-        if row.mentor_id == mentor_id:
-            return row
-    return MentorCoverage(mentor_id=mentor_id, learners_assigned=0, hours_available=1, sessions_scheduled=0)
 
 
 def coverage_forecast(rows: Iterable[MentorCoverage], weeks: int = 4) -> Dict[int, Dict[str, int]]:
@@ -103,9 +90,17 @@ def coverage_alerts(rows: Iterable[MentorCoverage]) -> List[str]:
     return alerts
 
 
-def coverage_digest(rows: Iterable[MentorCoverage]) -> Dict[str, object]:
+def coverage_digest(rows: Iterable[MentorCoverage]) -> CoverageDigest:
+    # Materialize once so all downstream calculations are stable even if `rows` is a generator.
+    normalized_rows = list(rows)
+    summary = coverage_summary(normalized_rows)
+    heatmap = coverage_heatmap(normalized_rows)
+    alerts = coverage_alerts(normalized_rows)
+
     return {
-        "summary": coverage_summary(rows),
-        "pressure": coverage_pressure(rows),
-        "alerts": coverage_alerts(rows),
+        "summary": summary,
+        "heatmap": heatmap,
+        "pressure": coverage_pressure(normalized_rows),
+        "overloaded": alerts,
+        "alerts": alerts,
     }
